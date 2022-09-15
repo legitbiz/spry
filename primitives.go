@@ -10,29 +10,28 @@ import (
 type Identifiers = map[string]any
 
 type Actor[T any] interface {
-	Apply([]any) T
 	GetIdentifiers() Identifiers
-	Handle(interface{}) ([]any, error)
 }
 
-type Jsoner interface {
-	ToJson() ([]byte, error)
-	FromJson([]byte) error
+type Command interface {
+	Handle(any) ([]Event, []error)
 }
 
-type jsonny struct{}
-
-func (j jsonny) ToJson() ([]byte, error) {
-	return json.Marshal(j)
+type Event interface {
+	Apply(any) any
 }
 
-func (j *jsonny) FromJson(bytes []byte) error {
-	err := json.Unmarshal(bytes, j)
-	return err
+func ToJson[T any](obj T) ([]byte, error) {
+	return json.Marshal(obj)
+}
+
+func FromJson[T any](bytes []byte) (T, error) {
+	obj := *new(T)
+	err := json.Unmarshal(bytes, obj)
+	return obj, err
 }
 
 type Snapshot struct {
-	jsonny
 	// a generated uuid (system id) for the actor instance
 	Id uuid.UUID `json:"id"`
 	// the type name of the actor
@@ -57,8 +56,7 @@ type Snapshot struct {
 	Data any
 }
 
-type Event struct {
-	jsonny
+type EventRecord struct {
 	// a generated uuid for this event
 	Id uuid.UUID `json:"id"`
 	// the type name of the event
@@ -87,8 +85,7 @@ type Event struct {
 	Data any
 }
 
-type Command struct {
-	jsonny
+type CommandRecord struct {
 	// a generated uuid for this event
 	Id uuid.UUID `json:"id"`
 	// the type name of the command

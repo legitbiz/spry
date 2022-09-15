@@ -9,7 +9,7 @@ import (
 type Results[T Actor[T]] struct {
 	Original T
 	Modified T
-	Events   []any
+	Events   []Event
 	Errors   []error
 }
 
@@ -38,8 +38,12 @@ type Repository[T Actor[T]] struct {
 	ActorName string
 }
 
-func (repository Repository[T]) Apply(events []any, actor T) (T, error) {
-	return repository.getEmpty(), nil
+func (repository Repository[T]) Apply(events []Event, actor T) T {
+	var modified T = actor
+	for _, event := range events {
+		event.Apply(&modified)
+	}
+	return modified
 }
 
 func (repository Repository[T]) Fetch() (T, error) {
@@ -50,16 +54,17 @@ func (repository Repository[T]) getEmpty() T {
 	return *new(T)
 }
 
-func (repository Repository[T]) Handle(command any) Results[T] {
+func (repository Repository[T]) Handle(command Command) Results[T] {
 	// needs to eventually load instance from storage
 	empty := repository.getEmpty()
-	events, err := empty.Handle(command)
-	next := empty.Apply(events)
+	events, errors := command.Handle(empty)
+	next := repository.Apply(events, empty)
+	// next := empty.Apply(events)
 	return Results[T]{
 		Original: empty,
 		Modified: next,
 		Events:   events,
-		Errors:   []error{err},
+		Errors:   errors,
 	}
 }
 

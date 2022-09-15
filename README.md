@@ -28,6 +28,17 @@ type PlayerCreated struct {
     Name string
 }
 
+func (event PlayerCreated) applyToPlayer(player Player) {
+    player.Name = event.Name
+}
+
+func (event PlayerCreated) apply(actor *Actor) {
+    switch a:= actor.(type) {
+    case Player:
+        event.applyToPlayer(a.(Player))
+    }
+}
+
 type PlayerDamaged struct {
     Damage int
 }
@@ -55,7 +66,5 @@ type HealPlayer struct {
 
 
 // command handlers
-
-
 
 ```
