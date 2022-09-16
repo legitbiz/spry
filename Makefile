@@ -1,5 +1,5 @@
 build: godeps golint
-	go build -o ./bin/spacedora
+	go build -o ./bin/spry
 
 godeps:
 	go get
@@ -9,3 +9,11 @@ golint:
 
 test: build
 	go test -v .
+
+compose:
+	cd ./.docker && \
+		docker-compose up
+
+decomp:
+	cd ./.docker && \
+		docker-compose down

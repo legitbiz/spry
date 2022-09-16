@@ -90,6 +90,10 @@ type CreatePlayer struct {
 	Name string
 }
 
+func (command CreatePlayer) GetIdentifiers() Identifiers {
+	return Identifiers{"name": command.Name}
+}
+
 func (command CreatePlayer) Handle(actor any) ([]Event, []error) {
 	var events []Event
 	switch actor.(type) {
@@ -100,7 +104,12 @@ func (command CreatePlayer) Handle(actor any) ([]Event, []error) {
 }
 
 type DamagePlayer struct {
+	Name   string
 	Damage int
+}
+
+func (command DamagePlayer) GetIdentifiers() Identifiers {
+	return Identifiers{"name": command.Name}
 }
 
 func (command DamagePlayer) Handle(actor any) ([]Event, []error) {
@@ -110,20 +119,25 @@ func (command DamagePlayer) Handle(actor any) ([]Event, []error) {
 		if a.HitPoints <= command.Damage {
 			events = append(events, PlayerDied{Message: "you died"})
 		}
-		events = append(events, PlayerDamaged(command))
+		events = append(events, PlayerDamaged{Damage: command.Damage})
 	}
 	return events, []error{}
 }
 
 type HealPlayer struct {
+	Name   string
 	Health int
+}
+
+func (command HealPlayer) GetIdentifiers() Identifiers {
+	return Identifiers{"name": command.Name}
 }
 
 func (command HealPlayer) Handle(actor any) ([]Event, []error) {
 	var events []Event
 	switch actor.(type) {
 	case Player:
-		events = append(events, PlayerHealed(command))
+		events = append(events, PlayerHealed{Health: command.Health})
 	}
 	return events, []error{}
 }

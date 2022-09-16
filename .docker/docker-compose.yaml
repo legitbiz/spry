@@ -1,0 +1,20 @@
+version: "2"
+services:
+  postgres:
+    build:
+      context: ./
+      dockerfile: Dockerfile.pg
+    container_name: sprydb
+    restart: always
+    environment:
+      - POSTGRES_USER=spry
+      - POSTGRES_PASSWORD=yippyskippy
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    networks:
+      - spry
+    ports:
+      - 5540:5432
+    volumes:
+      - ./volumes/postgres/data:/var/lib/postgresql/data/pgdata
+networks:
+  spry:

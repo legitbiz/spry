@@ -1,8 +1,63 @@
 package spry
 
 import (
+	"context"
+	"fmt"
 	"testing"
+
+	"github.com/gofrs/uuid"
+	"github.com/jackc/pgx/v4"
 )
+
+func TestFetchingIds(t *testing.T) {
+	ids := make([]uuid.UUID, 1000)
+	for i := range ids {
+		id, err := GetId()
+		if err != nil {
+			t.Error("failed to generate an id")
+		}
+		ids[i] = id
+	}
+	for i := 1; i < len(ids); i++ {
+		p, n := ids[i-1], ids[i]
+		if p == n {
+			t.Error("duplicate ids :@")
+		} else if p.String() > n.String() {
+			t.Errorf("ids are not in increasing order %s <= %s",
+				n, p)
+		} else {
+			fmt.Printf("%s\n", p)
+		}
+	}
+}
+
+func TestSqlOrdering(t *testing.T) {
+	connectionString := "postgres://spry:yippyskippy@localhost:5540/sprydb"
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, connectionString)
+	if err != nil {
+		t.Error("could not connect to the databass", err)
+	}
+
+	ids := make([]uuid.UUID, 10000)
+	for i := range ids {
+		id, err := GetId()
+		if err != nil {
+			t.Error("failed to generate an id")
+		}
+
+		ids[i] = id
+		tag, err := conn.Exec(
+			ctx,
+			"INSERT INTO id_sort_test (id, ordering) VALUES ($1, $2)",
+			id,
+			i,
+		)
+		if err != nil || tag.RowsAffected() < 1 {
+			t.Error("failed to insert row", err)
+		}
+	}
+}
 
 func TestGetRepositoryFor(t *testing.T) {
 	repo := GetRepositoryFor[Player]()
