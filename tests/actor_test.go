@@ -1,4 +1,6 @@
-package spry
+package tests
+
+import "github.com/arobson/spry"
 
 // an aggregate
 type World struct {
@@ -7,7 +9,7 @@ type World struct {
 	Players     []string
 }
 
-func (w World) GetIdentifiers() Identifiers {
+func (w World) GetIdentifiers() spry.Identifiers {
 	return map[string]any{"name": w.Name}
 }
 
@@ -18,7 +20,7 @@ type Player struct {
 	Dead      bool
 }
 
-func (p Player) GetIdentifiers() Identifiers {
+func (p Player) GetIdentifiers() spry.Identifiers {
 	return map[string]any{"name": p.Name}
 }
 
@@ -66,8 +68,8 @@ type PlayerHealed struct {
 
 func (event PlayerHealed) Apply(actor any) any {
 	switch a := actor.(type) {
-	case Player:
-		a.HitPoints -= event.Health
+	case *Player:
+		a.HitPoints += event.Health
 	}
 	return actor
 }
@@ -78,7 +80,7 @@ type PlayerDied struct {
 
 func (event PlayerDied) Apply(actor any) any {
 	switch a := actor.(type) {
-	case World:
+	case *World:
 		a.PlayerCount--
 	}
 	return actor
@@ -90,12 +92,12 @@ type CreatePlayer struct {
 	Name string
 }
 
-func (command CreatePlayer) GetIdentifiers() Identifiers {
-	return Identifiers{"name": command.Name}
+func (command CreatePlayer) GetIdentifiers() spry.Identifiers {
+	return spry.Identifiers{"name": command.Name}
 }
 
-func (command CreatePlayer) Handle(actor any) ([]Event, []error) {
-	var events []Event
+func (command CreatePlayer) Handle(actor any) ([]spry.Event, []error) {
+	var events []spry.Event
 	switch actor.(type) {
 	case Player:
 		events = append(events, PlayerCreated(command))
@@ -108,12 +110,12 @@ type DamagePlayer struct {
 	Damage int
 }
 
-func (command DamagePlayer) GetIdentifiers() Identifiers {
-	return Identifiers{"name": command.Name}
+func (command DamagePlayer) GetIdentifiers() spry.Identifiers {
+	return spry.Identifiers{"name": command.Name}
 }
 
-func (command DamagePlayer) Handle(actor any) ([]Event, []error) {
-	var events []Event
+func (command DamagePlayer) Handle(actor any) ([]spry.Event, []error) {
+	var events []spry.Event
 	switch a := actor.(type) {
 	case Player:
 		if a.HitPoints <= command.Damage {
@@ -129,12 +131,12 @@ type HealPlayer struct {
 	Health int
 }
 
-func (command HealPlayer) GetIdentifiers() Identifiers {
-	return Identifiers{"name": command.Name}
+func (command HealPlayer) GetIdentifiers() spry.Identifiers {
+	return spry.Identifiers{"name": command.Name}
 }
 
-func (command HealPlayer) Handle(actor any) ([]Event, []error) {
-	var events []Event
+func (command HealPlayer) Handle(actor any) ([]spry.Event, []error) {
+	var events []spry.Event
 	switch actor.(type) {
 	case Player:
 		events = append(events, PlayerHealed{Health: command.Health})
