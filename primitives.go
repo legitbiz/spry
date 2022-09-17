@@ -34,8 +34,10 @@ func FromJson[T any](bytes []byte) (T, error) {
 }
 
 type Snapshot struct {
-	// a generated uuid (system id) for the actor instance
+	// a generated uuid (system id) for the snapshot instance
 	Id uuid.UUID `json:"id"`
+	// this is the addressable identity of the owning model
+	ActorId uuid.UUID `json:"actorId"`
 	// the type name of the actor
 	Type string `json:"type"`
 	// a serialized causal tracker
@@ -60,7 +62,7 @@ type Snapshot struct {
 	Data any
 }
 
-func (snapshot Snapshot) isValid() bool {
+func (snapshot Snapshot) IsValid() bool {
 	return snapshot.Id.IsNil()
 }
 
@@ -87,10 +89,10 @@ type EventRecord struct {
 	Type string `json:"type"`
 	// inferred from the actor emitting the event
 	ActorNamespace string `json:"namespace"`
+	// this is the addressable identity of the owning model
+	ActorId uuid.UUID `json:"actorId"`
 	// the type of the model the event was generated for
 	ActorType string `json:"actor"`
-	// this is the addressable identity of the owning model
-	SnapshotId uuid.UUID `json:"snapshotId"`
 	// UTC ISO date time string when event was created
 	CreatedOn time.Time `json:"createdOn"`
 	// the type of the actor instantiating the event
@@ -109,7 +111,7 @@ type EventRecord struct {
 	Data any
 }
 
-func (event EventRecord) isValid() bool {
+func (event EventRecord) IsValid() bool {
 	return event.Id.IsNil()
 }
 
@@ -148,7 +150,7 @@ type CommandRecord struct {
 	Data any
 }
 
-func (command CommandRecord) isValid() bool {
+func (command CommandRecord) IsValid() bool {
 	return command.Id.IsNil()
 }
 

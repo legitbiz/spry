@@ -2,9 +2,9 @@ package spry
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/pkg/errors"
 )
 
 func GetId() (uuid.UUID, error) {
@@ -49,13 +49,14 @@ type Storage struct {
 }
 
 func NewStorage(
-	idMaps MapStore,
+	maps MapStore,
 	commands CommandStore,
 	events EventStore,
 	snapshots SnapshotStore) Storage {
 	return Storage{
 		Events:    events,
 		Commands:  commands,
+		Maps:      maps,
 		Snapshots: snapshots,
 	}
 }
@@ -100,17 +101,23 @@ type InMemoryMapStore struct {
 	IdMap map[string]uuid.UUID
 }
 
-func (maps InMemoryMapStore) Add(ids Identifiers, uid uuid.UUID) error {
+func (maps *InMemoryMapStore) Add(ids Identifiers, uid uuid.UUID) error {
+	if maps.IdMap == nil {
+		maps.IdMap = map[string]uuid.UUID{}
+	}
 	key, _ := IdMapToString(ids)
 	maps.IdMap[key] = uid
 	return nil
 }
 
-func (maps InMemoryMapStore) GetId(ids Identifiers) (uuid.UUID, error) {
+func (maps *InMemoryMapStore) GetId(ids Identifiers) (uuid.UUID, error) {
+	if maps.IdMap == nil {
+		maps.IdMap = map[string]uuid.UUID{}
+	}
 	key, _ := IdMapToString(ids)
 	uid := maps.IdMap[key]
-	if uid != uuid.Nil {
-		return uuid.Nil, errors.Errorf("no uuid exists for map %s", ids)
+	if uid == uuid.Nil {
+		return uuid.Nil, nil
 	}
 	return uid, nil
 }
@@ -120,6 +127,9 @@ type InMemoryEventStore struct {
 }
 
 func (store *InMemoryEventStore) Add(events []EventRecord) error {
+	if store.Events == nil {
+		store.Events = map[uuid.UUID][]EventRecord{}
+	}
 	for _, event := range events {
 		actorId := event.CreatedById
 		if stored, ok := store.Events[actorId]; ok {
@@ -132,6 +142,9 @@ func (store *InMemoryEventStore) Add(events []EventRecord) error {
 }
 
 func (store *InMemoryEventStore) FetchSince(actorId uuid.UUID, eventUUID uuid.UUID) ([]EventRecord, error) {
+	if store.Events == nil {
+		store.Events = map[uuid.UUID][]EventRecord{}
+	}
 	if stored, ok := store.Events[actorId]; ok {
 		return stored, nil
 	} else {
@@ -144,6 +157,9 @@ type InMemoryCommandStore struct {
 }
 
 func (store *InMemoryCommandStore) Add(command CommandRecord) error {
+	if store.Commands == nil {
+		store.Commands = map[uuid.UUID][]CommandRecord{}
+	}
 	actorId := command.HandledBy
 	if stored, ok := store.Commands[actorId]; ok {
 		store.Commands[actorId] = append(stored, command)
@@ -158,7 +174,10 @@ type InMemorySnapshotStore struct {
 }
 
 func (store *InMemorySnapshotStore) Add(snapshot Snapshot) error {
-	actorId := snapshot.Id
+	if store.Snapshots == nil {
+		store.Snapshots = map[uuid.UUID][]Snapshot{}
+	}
+	actorId := snapshot.ActorId
 	if stored, ok := store.Snapshots[actorId]; ok {
 		store.Snapshots[actorId] = append(stored, snapshot)
 	} else {
@@ -168,10 +187,22 @@ func (store *InMemorySnapshotStore) Add(snapshot Snapshot) error {
 }
 
 func (store *InMemorySnapshotStore) Fetch(actorId uuid.UUID) (Snapshot, error) {
-	if stored, ok := store.Snapshots[actorId]; ok {
-		return stored[len(stored)-1]
+	if store.Snapshots == nil {
+		store.Snapshots = map[uuid.UUID][]Snapshot{}
 	}
-	return Snapshot{}
+	if stored, ok := store.Snapshots[actorId]; ok {
+		return stored[len(stored)-1], nil
+	}
+	return Snapshot{}, nil
+}
+
+func InMemoryStorage() Storage {
+	return NewStorage(
+		&InMemoryMapStore{},
+		&InMemoryCommandStore{},
+		&InMemoryEventStore{},
+		&InMemorySnapshotStore{},
+	)
 }
 
 type Repository[T Actor[T]] struct {
@@ -193,67 +224,179 @@ func (repository Repository[T]) Apply(events []Event, actor T) T {
 	return modified
 }
 
-func (repository Repository[T]) Fetch(ids Identifiers) (T, error) {
-	// check for a registered actor id for the identifiers
+func (repository Repository[T]) fetch(ids Identifiers) (Snapshot, error) {
+	// create an empty actor instance and empty snapshot
 	empty := repository.getEmpty()
-	baseline, err := NewSnapshot(empty)
+	snapshot, err := NewSnapshot(empty)
 	events := []EventRecord{}
 	if err != nil {
-		return empty, err
+		return snapshot, err
 	}
+
+	// fetch the actor id from the identifier
 	actorId, err := repository.Storage.FetchId(ids)
 	if err != nil {
-		return empty, err
+		return snapshot, err
 	}
 
 	// check for the latest snapshot available
 	if actorId != uuid.Nil {
-		baseline, err = repository.Storage.FetchLatestSnapshot(actorId)
+		latest, err := repository.Storage.FetchLatestSnapshot(actorId)
 		if err != nil {
-			return empty, err
+			return snapshot, err
+		}
+		if latest.IsValid() {
+			snapshot = latest
+		}
+	} else {
+		snapshot.ActorId, err = GetId()
+		if err != nil {
+			return snapshot, err
 		}
 	}
 
 	// check for all events since the latest snapshot
 	if actorId != uuid.Nil {
-		eventId := baseline.LastEventId
+		eventId := snapshot.LastEventId
 		events, err = repository.Storage.FetchEventsSince(
 			actorId,
 			eventId,
 		)
 		if err != nil {
-			return empty, err
+			return snapshot, err
 		}
 	}
 
-	es := make([]Event, len(events))
+	eventCount := len(events)
+	es := make([]Event, eventCount)
 	for i, record := range events {
 		es[i] = record.Data.(Event)
 	}
-	actor := baseline.Data.(T)
+	actor := snapshot.Data.(T)
 	// apply events to snapshot
 	next := repository.Apply(es, actor)
 
 	// update snapshot record
+	if eventCount > 0 {
+		snapshot.EventsApplied += uint64(eventCount)
+		last := events[len(events)-1]
+		snapshot.LastEventOn = last.CreatedOn
+		snapshot.LastEventId = last.Id
+		snapshot.Version++
+		snapshot.Data = next
+	}
 
-	// return actor
-	return next, nil
+	if snapshot.ActorId == uuid.Nil {
+
+	}
+
+	return snapshot, nil
+}
+
+func (repository Repository[T]) Fetch(ids Identifiers) (T, error) {
+	snapshot, err := repository.fetch(ids)
+	if err != nil {
+		return repository.getEmpty(), err
+	}
+	return snapshot.Data.(T), nil
 }
 
 func (repository Repository[T]) Handle(command Command) Results[T] {
 	identifiers := command.GetIdentifiers()
-	empty, err := repository.Fetch(identifiers)
+	baseline, err := repository.fetch(identifiers)
 	if err != nil {
 		return Results[T]{
 			Errors: []error{err},
 		}
 	}
 
-	events, errors := command.Handle(empty)
-	next := repository.Apply(events, empty)
-	// next := empty.Apply(events)
+	cmdRecord, err := NewCommandRecord(command)
+	if err != nil {
+		return Results[T]{
+			Original: baseline.Data.(T),
+			Errors:   []error{err},
+		}
+	}
+	cmdRecord.HandledBy = baseline.ActorId
+	cmdRecord.HandledOn = time.Now()
+
+	actor := baseline.Data.(T)
+	events, errors := command.Handle(actor)
+	next := repository.Apply(events, actor)
+	eventRecords := make([]EventRecord, len(events))
+	for i, event := range events {
+		record, err := NewEventRecord(event)
+		if err != nil {
+			return Results[T]{
+				Original: baseline.Data.(T),
+				Errors:   []error{err},
+			}
+		}
+
+		record.ActorId = baseline.ActorId
+		record.ActorType = repository.ActorName
+		record.CreatedBy = repository.ActorName
+		record.CreatedById = baseline.ActorId
+		record.CreatedByVersion = baseline.Version
+		record.CreatedOn = time.Now()
+		record.Id, _ = GetId()
+		record.InitiatedBy = cmdRecord.Type
+		record.InitiatedById = cmdRecord.Id
+		eventRecords[i] = record
+	}
+	lastEventRecord := eventRecords[len(eventRecords)-1]
+
+	snapshot, err := NewSnapshot(next)
+	if err != nil {
+		return Results[T]{
+			Original: next,
+			Errors:   []error{err},
+		}
+	}
+	snapshot.ActorId = baseline.ActorId
+	snapshot.EventsApplied += uint64(len(events))
+	snapshot.LastCommandId = cmdRecord.Id
+	snapshot.LastCommandOn = cmdRecord.HandledOn
+	snapshot.LastEventId = lastEventRecord.Id
+	snapshot.LastEventOn = lastEventRecord.CreatedOn
+	snapshot.EventsApplied += uint64(len(eventRecords))
+	snapshot.Version++
+
+	// store id map
+	err = repository.Storage.Maps.Add(identifiers, snapshot.ActorId)
+	if err != nil {
+		return Results[T]{
+			Original: actor,
+			Modified: next,
+			Events:   events,
+			Errors:   []error{err},
+		}
+	}
+
+	// store events
+	err = repository.Storage.Events.Add(eventRecords)
+	if err != nil {
+		return Results[T]{
+			Original: actor,
+			Modified: next,
+			Events:   events,
+			Errors:   []error{err},
+		}
+	}
+
+	// store snapshot?
+	err = repository.Storage.AddSnapshot(snapshot)
+	if err != nil {
+		return Results[T]{
+			Original: actor,
+			Modified: next,
+			Events:   events,
+			Errors:   []error{err},
+		}
+	}
+
 	return Results[T]{
-		Original: empty,
+		Original: actor,
 		Modified: next,
 		Events:   events,
 		Errors:   errors,

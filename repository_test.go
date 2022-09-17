@@ -60,14 +60,16 @@ func TestSqlOrdering(t *testing.T) {
 }
 
 func TestGetRepositoryFor(t *testing.T) {
-	repo := GetRepositoryFor[Player]()
+	storage := InMemoryStorage()
+	repo := GetRepositoryFor[Player](storage)
 	if repo.ActorName != "Player" {
 		t.Error("actor name was not the expected type")
 	}
 }
 
 func TestHandleCommandSuccessfully(t *testing.T) {
-	repo := GetRepositoryFor[Player]()
+	storage := InMemoryStorage()
+	repo := GetRepositoryFor[Player](storage)
 	results := repo.Handle(CreatePlayer{Name: "Bob"})
 
 	// create player
@@ -83,16 +85,19 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 		t.Error("modified actor did not contain expected state")
 	}
 
-	expected2 := PlayerDamaged{Damage: -10}
-	results2 := repo.Handle(DamagePlayer{Damage: -10})
+	expected2 := PlayerDamaged{Damage: 10}
+	results2 := repo.Handle(DamagePlayer{Name: "Bob", Damage: 10})
 	if len(results2.Events) == 0 ||
 		results2.Events[0].(PlayerDamaged) != expected2 {
 		t.Error("event was not generated or did not match expected output")
 	}
-	if results2.Original.HitPoints != 0 {
+	if results2.Original.HitPoints != 100 {
 		t.Error("original actor instance was modified but should not have been")
 	}
-	if results2.Modified.HitPoints != 10 {
+	if results2.Modified.HitPoints != 90 {
 		t.Error("modified actor did not contain expected state")
+	}
+	if results2.Modified.Name != "Bob" {
+		t.Error("incorrect creation of new actor occurred")
 	}
 }
