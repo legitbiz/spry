@@ -37,14 +37,14 @@ func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
 	}
 
 	// fetch the actor id from the identifier
-	actorId, err := repository.Storage.FetchId(ids)
+	actorId, err := repository.Storage.FetchId(repository.ActorName, ids)
 	if err != nil {
 		return snapshot, err
 	}
 
 	// check for the latest snapshot available
 	if actorId != uuid.Nil {
-		latest, err := repository.Storage.FetchLatestSnapshot(actorId)
+		latest, err := repository.Storage.FetchLatestSnapshot(repository.ActorName, actorId)
 		if err != nil {
 			return snapshot, err
 		}
@@ -64,6 +64,7 @@ func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
 	if actorId != uuid.Nil {
 		eventId := snapshot.LastEventId
 		events, err = repository.Storage.FetchEventsSince(
+			repository.ActorName,
 			actorId,
 			eventId,
 		)
@@ -123,6 +124,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 		}
 	}
 	cmdRecord.HandledBy = baseline.ActorId
+	cmdRecord.HandledVersion = baseline.Version
 	cmdRecord.HandledOn = time.Now()
 
 	actor := baseline.Data.(T)
@@ -168,7 +170,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	snapshot.Version++
 
 	// store id map
-	err = repository.Storage.AddMap(identifiers, snapshot.ActorId)
+	err = repository.Storage.AddMap(repository.ActorName, identifiers, snapshot.ActorId)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,
@@ -179,7 +181,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store events
-	err = repository.Storage.AddEvents(eventRecords)
+	err = repository.Storage.AddEvents(repository.ActorName, eventRecords)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,
@@ -190,7 +192,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store snapshot?
-	err = repository.Storage.AddSnapshot(snapshot)
+	err = repository.Storage.AddSnapshot(repository.ActorName, snapshot)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,

@@ -42,7 +42,7 @@ type Snapshot struct {
 	// the wall clock at the time of the last event
 	LastEventOn time.Time `json:"lastEventOn"`
 	// the contents of the snapshot
-	Data any
+	Data any `json:"data"`
 }
 
 func (snapshot Snapshot) IsValid() bool {
@@ -91,7 +91,7 @@ type EventRecord struct {
 	// the id of the message that triggered the event
 	InitiatedById uuid.UUID `json:"initiatedById"`
 	// the contents of the event
-	Data any
+	Data any `json:"data"`
 }
 
 func (event EventRecord) IsValid() bool {
@@ -129,8 +129,10 @@ type CommandRecord struct {
 	HandledOn time.Time `json:"handledOn"`
 	// the id of the recipient actor
 	HandledBy uuid.UUID `json:"handledBy"`
-	// the contents of the event
-	Data any
+	// the version of the actor that handled the command
+	HandledVersion uint64
+	// the contents of the command
+	Data any `json:"data"`
 }
 
 func (command CommandRecord) IsValid() bool {
