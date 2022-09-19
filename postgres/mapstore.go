@@ -16,16 +16,15 @@ type PostgresMapStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresMapStore) Add(actorName string, ids spry.Identifiers, uid uuid.UUID) error {
-	ctx := context.Background()
+func (store *PostgresMapStore) Add(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
 	query, _ := store.Templates.Execute(
 		"insert_map.sql",
 		queryData(actorName),
 	)
+	tx := storage.GetTx[pgx.Tx](ctx)
 	id, _ := storage.GetId()
-	err := store.Pool.BeginTxFunc(
+	err := tx.BeginFunc(
 		ctx,
-		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(ids)
 			if err != nil {
@@ -45,8 +44,7 @@ func (store *PostgresMapStore) Add(actorName string, ids spry.Identifiers, uid u
 	return err
 }
 
-func (store *PostgresMapStore) GetId(actorName string, ids spry.Identifiers) (uuid.UUID, error) {
-	ctx := context.Background()
+func (store *PostgresMapStore) GetId(ctx context.Context, actorName string, ids spry.Identifiers) (uuid.UUID, error) {
 	query, _ := store.Templates.Execute(
 		"select_id_by_map.sql",
 		queryData(actorName),
@@ -55,7 +53,9 @@ func (store *PostgresMapStore) GetId(actorName string, ids spry.Identifiers) (uu
 	if err != nil {
 		return uuid.Nil, err
 	}
-	rows, err := store.Pool.Query(
+
+	tx := storage.GetTx[pgx.Tx](ctx)
+	rows, err := tx.Query(
 		ctx,
 		query,
 		data,

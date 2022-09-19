@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"reflect"
 	"time"
 
@@ -27,7 +28,7 @@ func (repository Repository[T]) Apply(events []spry.Event, actor T) T {
 	return modified
 }
 
-func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
+func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers) (Snapshot, error) {
 	// create an empty actor instance and empty snapshot
 	empty := getEmpty[T]()
 	snapshot, err := NewSnapshot(empty)
@@ -37,14 +38,14 @@ func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
 	}
 
 	// fetch the actor id from the identifier
-	actorId, err := repository.Storage.FetchId(repository.ActorName, ids)
+	actorId, err := repository.Storage.FetchId(ctx, repository.ActorName, ids)
 	if err != nil {
 		return snapshot, err
 	}
 
 	// check for the latest snapshot available
 	if actorId != uuid.Nil {
-		latest, err := repository.Storage.FetchLatestSnapshot(repository.ActorName, actorId)
+		latest, err := repository.Storage.FetchLatestSnapshot(ctx, repository.ActorName, actorId)
 		if err != nil {
 			return snapshot, err
 		}
@@ -64,6 +65,7 @@ func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
 	if actorId != uuid.Nil {
 		eventId := snapshot.LastEventId
 		events, err = repository.Storage.FetchEventsSince(
+			ctx,
 			repository.ActorName,
 			actorId,
 			eventId,
@@ -100,7 +102,12 @@ func (repository Repository[T]) fetch(ids spry.Identifiers) (Snapshot, error) {
 }
 
 func (repository Repository[T]) Fetch(ids spry.Identifiers) (T, error) {
-	snapshot, err := repository.fetch(ids)
+	ctx := context.Background()
+	ctx, err := repository.Storage.GetContext(ctx)
+	if err != nil {
+		return getEmpty[T](), err
+	}
+	snapshot, err := repository.fetch(ctx, ids)
 	if err != nil {
 		return getEmpty[T](), err
 	}
@@ -108,8 +115,12 @@ func (repository Repository[T]) Fetch(ids spry.Identifiers) (T, error) {
 }
 
 func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
+	ctx, err := repository.Storage.GetContext(context.Background())
+	if err != nil {
+		return spry.Results[T]{Errors: []error{err}}
+	}
 	identifiers := command.GetIdentifiers()
-	baseline, err := repository.fetch(identifiers)
+	baseline, err := repository.fetch(ctx, identifiers)
 	if err != nil {
 		return spry.Results[T]{
 			Errors: []error{err},
@@ -170,7 +181,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	snapshot.Version++
 
 	// store id map
-	err = repository.Storage.AddMap(repository.ActorName, identifiers, snapshot.ActorId)
+	err = repository.Storage.AddMap(ctx, repository.ActorName, identifiers, snapshot.ActorId)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,
@@ -181,7 +192,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store events
-	err = repository.Storage.AddEvents(repository.ActorName, eventRecords)
+	err = repository.Storage.AddEvents(ctx, repository.ActorName, eventRecords)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,
@@ -192,7 +203,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store snapshot?
-	err = repository.Storage.AddSnapshot(repository.ActorName, snapshot)
+	err = repository.Storage.AddSnapshot(ctx, repository.ActorName, snapshot)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,

@@ -50,12 +50,15 @@ func TestCommandStorage(t *testing.T) {
 	cr1.ReceivedOn = time.Now()
 	cr1.Type = "CreatePlayer"
 
-	err := store.AddCommand("Player", cr1)
+	ctx, _ := store.GetContext(context.Background())
+
+	err := store.AddCommand(ctx, "Player", cr1)
 	if err != nil {
 		t.Fatal("failed to store command correctly")
 	}
 
-	err = TruncateTable("player_commands")
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err = tx.Rollback(ctx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -88,7 +91,9 @@ func TestEventStorage(t *testing.T) {
 	er2.Data = e1
 	er2.Type = "PlayerCreated"
 
-	err := store.AddEvents("Player", []storage.EventRecord{
+	ctx, _ := store.GetContext(context.Background())
+
+	err := store.AddEvents(ctx, "Player", []storage.EventRecord{
 		er1,
 		er2,
 	})
@@ -97,7 +102,7 @@ func TestEventStorage(t *testing.T) {
 		t.Error(err)
 	}
 
-	records, err := store.FetchEventsSince("player", aid1, uuid.Nil)
+	records, err := store.FetchEventsSince(ctx, "player", aid1, uuid.Nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +110,8 @@ func TestEventStorage(t *testing.T) {
 		t.Fatalf("expected %d records but got %d instead", 2, len(records))
 	}
 
-	err = TruncateTable("player_events")
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err = tx.Rollback(ctx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -120,20 +126,21 @@ func TestMapStorage(t *testing.T) {
 	ids2 := spry.Identifiers{"Name": "Gandalf", "Title": "The White"}
 	aid, _ := storage.GetId()
 
-	err := store.AddMap("Player", ids1, aid)
+	ctx, _ := store.GetContext(context.Background())
+	err := store.AddMap(ctx, "Player", ids1, aid)
 	if err != nil {
 		t.Fatal("failed to add id map for id1", err)
 	}
-	err = store.AddMap("Player", ids2, aid)
+	err = store.AddMap(ctx, "Player", ids2, aid)
 	if err != nil {
 		t.Fatal("failed to add id map for id2", err)
 	}
 
-	read1, err := store.FetchId("Player", ids1)
+	read1, err := store.FetchId(ctx, "Player", ids1)
 	if err != nil {
 		t.Fatal("failed to read id for ids1", err)
 	}
-	read2, err := store.FetchId("Player", ids2)
+	read2, err := store.FetchId(ctx, "Player", ids2)
 	if err != nil {
 		t.Fatal("failed to read id for ids1", err)
 	}
@@ -145,7 +152,8 @@ func TestMapStorage(t *testing.T) {
 		t.Fatal("loaded the incorrect id for ids2")
 	}
 
-	err = TruncateTable("player_id_map")
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err = tx.Rollback(ctx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -196,16 +204,17 @@ func TestSnapshotStorage(t *testing.T) {
 		Data:          person2,
 	}
 
-	err := store.AddSnapshot("Player", snap1)
+	ctx, _ := store.GetContext(context.Background())
+	err := store.AddSnapshot(ctx, "Player", snap1)
 	if err != nil {
 		t.Fatal("failed to persist snapshot 1", err)
 	}
-	err = store.AddSnapshot("Player", snap2)
+	err = store.AddSnapshot(ctx, "Player", snap2)
 	if err != nil {
 		t.Fatal("failed to persist snapshot 2", err)
 	}
 
-	latest, err := store.FetchLatestSnapshot("player", uid1)
+	latest, err := store.FetchLatestSnapshot(ctx, "player", uid1)
 	if err != nil {
 		t.Fatal("failed to read the latest snapshot for uuid")
 	}
@@ -217,7 +226,8 @@ func TestSnapshotStorage(t *testing.T) {
 		t.Fatal("snapshot record did not load or deserialize correctly")
 	}
 
-	err = TruncateTable("player_snapshots")
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err = tx.Rollback(ctx)
 	if err != nil {
 		t.Error(err)
 	}

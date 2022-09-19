@@ -15,15 +15,14 @@ type PostgresSnapshotStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresSnapshotStore) Add(actorName string, snapshot storage.Snapshot) error {
-	ctx := context.Background()
+func (store *PostgresSnapshotStore) Add(ctx context.Context, actorName string, snapshot storage.Snapshot) error {
 	query, _ := store.Templates.Execute(
 		"insert_snapshot.sql",
 		queryData(actorName),
 	)
-	err := store.Pool.BeginTxFunc(
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err := tx.BeginFunc(
 		ctx,
-		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(snapshot)
 			if err != nil {
@@ -47,13 +46,13 @@ func (store *PostgresSnapshotStore) Add(actorName string, snapshot storage.Snaps
 	return err
 }
 
-func (store *PostgresSnapshotStore) Fetch(actorName string, actorId uuid.UUID) (storage.Snapshot, error) {
-	ctx := context.Background()
+func (store *PostgresSnapshotStore) Fetch(ctx context.Context, actorName string, actorId uuid.UUID) (storage.Snapshot, error) {
 	query, _ := store.Templates.Execute(
 		"select_latest_snapshot.sql",
 		queryData(actorName),
 	)
-	rows, err := store.Pool.Query(
+	tx := storage.GetTx[pgx.Tx](ctx)
+	rows, err := tx.Query(
 		ctx,
 		query,
 		actorId,

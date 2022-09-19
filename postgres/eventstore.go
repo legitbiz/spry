@@ -15,12 +15,13 @@ type PostgresEventStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresEventStore) Add(actorName string, events []storage.EventRecord) error {
-	ctx := context.Background()
+func (store *PostgresEventStore) Add(ctx context.Context, actorName string, events []storage.EventRecord) error {
+
 	query, _ := store.Templates.Execute(
 		"insert_event.sql",
 		queryData(actorName),
 	)
+	tx := storage.GetTx[pgx.Tx](ctx)
 	batch := pgx.Batch{}
 	for _, event := range events {
 		data, err := spry.ToJson(event)
@@ -36,20 +37,20 @@ func (store *PostgresEventStore) Add(actorName string, events []storage.EventRec
 			event.CreatedByVersion,
 		)
 	}
-	results := store.Pool.SendBatch(ctx, &batch)
-	_, _ = results.Exec()
+
+	results := tx.SendBatch(ctx, &batch)
 	_, _ = results.Exec()
 	err := results.Close()
 	return err
 }
 
-func (store *PostgresEventStore) FetchSince(actorName string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
-	ctx := context.Background()
+func (store *PostgresEventStore) FetchSince(ctx context.Context, actorName string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
 	query, _ := store.Templates.Execute(
 		"select_events_since.sql",
 		queryData(actorName),
 	)
-	rows, err := store.Pool.Query(
+	tx := storage.GetTx[pgx.Tx](ctx)
+	rows, err := tx.Query(
 		ctx,
 		query,
 		actorId,

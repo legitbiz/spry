@@ -14,15 +14,16 @@ type PostgresCommandStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresCommandStore) Add(actorName string, command storage.CommandRecord) error {
-	ctx := context.Background()
+func (store *PostgresCommandStore) Add(ctx context.Context, actorName string, command storage.CommandRecord) error {
 	query, _ := store.Templates.Execute(
 		"insert_command.sql",
 		queryData(actorName),
 	)
-	err := store.Pool.BeginTxFunc(
+
+	tx := storage.GetTx[pgx.Tx](ctx)
+
+	err := tx.BeginFunc(
 		ctx,
-		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(command)
 			if err != nil {

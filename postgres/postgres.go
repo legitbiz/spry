@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/arobson/spry/storage"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -14,15 +15,6 @@ type QueryData struct {
 
 func queryData(name string) QueryData {
 	return QueryData{ActorName: name}
-}
-
-func PostgresStorage() storage.Storage {
-	return storage.NewStorage(
-		&PostgresMapStore{},
-		&PostgresCommandStore{},
-		&PostgresEventStore{},
-		&PostgresSnapshotStore{},
-	)
 }
 
 func CreatePostgresStorage(connectionURI string) storage.Storage {
@@ -47,10 +39,11 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 		panic("oh no")
 	}
 
-	return storage.Stores{
-		Commands:  &PostgresCommandStore{Templates: *templates, Pool: pool},
-		Events:    &PostgresEventStore{Templates: *templates, Pool: pool},
-		Maps:      &PostgresMapStore{Templates: *templates, Pool: pool},
-		Snapshots: &PostgresSnapshotStore{Templates: *templates, Pool: pool},
+	return storage.Stores[pgx.Tx]{
+		Commands:     &PostgresCommandStore{Templates: *templates, Pool: pool},
+		Events:       &PostgresEventStore{Templates: *templates, Pool: pool},
+		Maps:         &PostgresMapStore{Templates: *templates, Pool: pool},
+		Snapshots:    &PostgresSnapshotStore{Templates: *templates, Pool: pool},
+		Transactions: &PostgresTxProvider{Pool: pool},
 	}
 }
