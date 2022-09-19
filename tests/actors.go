@@ -13,7 +13,7 @@ func (w World) GetIdentifiers() spry.Identifiers {
 	return map[string]any{"name": w.Name}
 }
 
-// your actor
+// Player actor
 type Player struct {
 	Name      string
 	HitPoints int
