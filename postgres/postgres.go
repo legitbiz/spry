@@ -21,7 +21,7 @@ func queryData(name string) QueryData {
 }
 
 type PostgresEventStore struct {
-	Pool      pgxpool.Pool
+	Pool      *pgxpool.Pool
 	Templates storage.StringTemplate
 }
 
@@ -72,7 +72,10 @@ func (store *PostgresEventStore) FetchSince(actorName string, actorId uuid.UUID,
 	records := []storage.EventRecord{}
 	for rows.Next() {
 		buffer := []byte{}
-		rows.Scan(nil, nil, nil, &buffer, nil)
+		err = rows.Scan(nil, nil, nil, &buffer, nil)
+		if err != nil {
+			return nil, err
+		}
 		record, err := spry.FromJson[storage.EventRecord](buffer)
 		if err != nil {
 			return nil, err
@@ -83,7 +86,7 @@ func (store *PostgresEventStore) FetchSince(actorName string, actorId uuid.UUID,
 }
 
 type PostgresCommandStore struct {
-	Pool      pgxpool.Pool
+	Pool      *pgxpool.Pool
 	Templates storage.StringTemplate
 }
 
@@ -98,6 +101,9 @@ func (store *PostgresCommandStore) Add(actorName string, command storage.Command
 		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(command)
+			if err != nil {
+				return err
+			}
 			_, err = t.Exec(
 				ctx,
 				query,
@@ -114,7 +120,7 @@ func (store *PostgresCommandStore) Add(actorName string, command storage.Command
 }
 
 type PostgresSnapshotStore struct {
-	Pool      pgxpool.Pool
+	Pool      *pgxpool.Pool
 	Templates storage.StringTemplate
 }
 
@@ -129,6 +135,9 @@ func (store *PostgresSnapshotStore) Add(actorName string, snapshot storage.Snaps
 		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(snapshot)
+			if err != nil {
+				return err
+			}
 			_, err = t.Exec(
 				ctx,
 				query,
@@ -165,7 +174,10 @@ func (store *PostgresSnapshotStore) Fetch(actorName string, actorId uuid.UUID) (
 	record := storage.Snapshot{}
 	if rows.Next() {
 		buffer := []byte{}
-		rows.Scan(nil, &buffer, nil, nil, nil, nil, nil)
+		err = rows.Scan(nil, &buffer, nil, nil, nil, nil, nil)
+		if err != nil {
+			return storage.Snapshot{}, err
+		}
 		record, err = spry.FromJson[storage.Snapshot](buffer)
 		if err != nil {
 			return record, err
@@ -184,7 +196,7 @@ func PostgresStorage() storage.Storage {
 }
 
 type PostgresMapStore struct {
-	Pool      pgxpool.Pool
+	Pool      *pgxpool.Pool
 	Templates storage.StringTemplate
 }
 
@@ -200,6 +212,9 @@ func (store *PostgresMapStore) Add(actorName string, ids spry.Identifiers, uid u
 		pgx.TxOptions{},
 		func(t pgx.Tx) error {
 			data, err := spry.ToJson(ids)
+			if err != nil {
+				return err
+			}
 			_, err = t.Exec(
 				ctx,
 				query,
@@ -221,6 +236,9 @@ func (store *PostgresMapStore) GetId(actorName string, ids spry.Identifiers) (uu
 		queryData(actorName),
 	)
 	data, err := spry.ToJson(ids)
+	if err != nil {
+		return uuid.Nil, err
+	}
 	rows, err := store.Pool.Query(
 		ctx,
 		query,
@@ -248,7 +266,7 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 	}
 
 	// load templates
-	templates, _ := storage.CreateTemplateFrom(
+	templates, err := storage.CreateTemplateFrom(
 		"./sql/insert_command.sql",
 		"./sql/insert_event.sql",
 		"./sql/insert_map.sql",
@@ -257,11 +275,15 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 		"./sql/select_latest_snapshot.sql",
 		"./sql/select_id_by_map.sql",
 	)
+	if err != nil {
+		fmt.Println("failed to read sql templates")
+		panic("oh no")
+	}
 
 	return storage.Stores{
-		Commands:  &PostgresCommandStore{Templates: *templates, Pool: *pool},
-		Events:    &PostgresEventStore{Templates: *templates, Pool: *pool},
-		Maps:      &PostgresMapStore{Templates: *templates, Pool: *pool},
-		Snapshots: &PostgresSnapshotStore{Templates: *templates, Pool: *pool},
+		Commands:  &PostgresCommandStore{Templates: *templates, Pool: pool},
+		Events:    &PostgresEventStore{Templates: *templates, Pool: pool},
+		Maps:      &PostgresMapStore{Templates: *templates, Pool: pool},
+		Snapshots: &PostgresSnapshotStore{Templates: *templates, Pool: pool},
 	}
 }

@@ -13,13 +13,13 @@ func TestCreateTemplate(t *testing.T) {
 	}
 	result, err := storage.CreateFromTemplate(
 		"create_actor_schema.sql",
-		"../postgres/create_actor_schema.sql",
+		"../postgres/sql/create_actor_schema.sql",
 		Data{ActorName: strings.ToLower("TesT")},
 	)
 	if err != nil {
 		t.Error("failed to create schema from template", err)
 	}
-	if result != "" {
+	if result == "" {
 		t.Error(result)
 	}
 }
