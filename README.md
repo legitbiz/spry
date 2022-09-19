@@ -7,7 +7,7 @@ An event sourcing library in Go.
 ## Use
 
 ```golang
-package demo
+package main
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ import (
 // Actors are how you model state in spry.
 
 type Player struct {
-	Name String
+	Name  string
 	Score uint32
 }
 
@@ -34,7 +34,7 @@ type Player struct {
 // Score would be a mistake to include!
 
 func (p Player) GetIdentifiers() spry.Identifiers {
-	return Identifiers{"Name": p.Name}
+	return spry.Identifiers{"Name": p.Name}
 }
 
 // Commands are Verb-Noun named structures that target a specific
@@ -47,7 +47,7 @@ type CreatePlayer struct {
 }
 
 func (c CreatePlayer) GetIdentifiers() spry.Identifiers {
-	return Identifiers{"Name": c.Name}
+	return spry.Identifiers{"Name": c.Name}
 }
 
 // Commands must also provide a Handle method for accepting
@@ -90,7 +90,7 @@ func (e PlayerCreated) Apply(actor any) any {
 }
 
 func (e PlayerCreated) applyToPlayer(player *Player) {
-	player.HitPoints = 100
+	player.Score = 0
 	player.Name = e.Name
 }
 
@@ -101,15 +101,15 @@ func (e PlayerCreated) applyToPlayer(player *Player) {
 // and Postgres.
 
 // creating a Repository from an InMemoryStore
-func FromMemory[T Actor[T]]() Repository[T] {
+func FromMemory[T spry.Actor[T]]() spry.Repository[T] {
 	memoryStore := memory.InMemoryStorage()
-	return storage.GetRepositoryFor[Player](store)
+	return storage.GetRepositoryFor[T](memoryStore)
 }
 
 // creating a Repository from a PostgresStore
-func FromPostgres[T Actor[T]](connectionURI) Repository[T] {
-	postgresStore := postgres.CreatePostgresStorage(connectionURI string)
-	return storage.GetRepositoryFor[Player](store)
+func FromPostgres[T spry.Actor[T]](connectionURI string) spry.Repository[T] {
+	postgresStore := postgres.CreatePostgresStorage(connectionURI)
+	return storage.GetRepositoryFor[T](postgresStore)
 }
 
 // Let's see how all this comes together when using the Repository API
@@ -118,14 +118,14 @@ func main() {
 
 	// no errors are returned - storage instances will intentionally panic
 	// and crash the process when a storage medium cannot be contacted
-	players := FromPostgres("postgres://user:password@localhost:5432/dbname")
+	players := FromPostgres[Player]("postgres://user:password@localhost:5432/dbname")
 
 	// let's create Player
 	results := players.Handle(CreatePlayer{Name: "A Super Unique Name"})
 
 	// the results struct has 4 properties:
 	// * Original - the initial state of the Actor instance
-	// * Modified - the new state of the Actor (if any) that occurs after the 
+	// * Modified - the new state of the Actor (if any) that occurs after the
 	//				Events produced by the Command (if any) are applied to the
 	//				Original state of the Actor.
 	// * Events	- the events that were produced by handling the
@@ -137,7 +137,7 @@ func main() {
 	fmt.Printf("Player created: %s\n", results.Modified.Name)
 
 	// To get the present state of your Actor, you can call Fetch:
-	myPlayer, err := players.Fetch(Identifiers{"Name": "A Super Unique Name"})
+	myPlayer, err := players.Fetch(spry.Identifiers{"Name": "A Super Unique Name"})
 	if err != nil {
 		fmt.Println("failed to read player", err)
 		os.Exit(1)
