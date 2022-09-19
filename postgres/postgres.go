@@ -62,8 +62,8 @@ func (store *PostgresEventStore) FetchSince(actorName string, actorId uuid.UUID,
 	rows, err := store.Pool.Query(
 		ctx,
 		query,
-		eventUUID,
 		actorId,
+		eventUUID,
 	)
 	if err != nil {
 		return nil, err
@@ -72,8 +72,11 @@ func (store *PostgresEventStore) FetchSince(actorName string, actorId uuid.UUID,
 	records := []storage.EventRecord{}
 	for rows.Next() {
 		buffer := []byte{}
-		rows.Scan(nil, nil, nil, nil, &buffer, nil)
-		record, _ := spry.FromJson[storage.EventRecord](buffer)
+		rows.Scan(nil, nil, nil, &buffer, nil)
+		record, err := spry.FromJson[storage.EventRecord](buffer)
+		if err != nil {
+			return nil, err
+		}
 		records = append(records, record)
 	}
 	return records, nil
@@ -136,6 +139,7 @@ func (store *PostgresSnapshotStore) Add(actorName string, snapshot storage.Snaps
 				snapshot.LastCommandOn,
 				snapshot.LastEventId,
 				snapshot.LastEventOn,
+				snapshot.Version,
 			)
 			return err
 		},

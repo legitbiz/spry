@@ -6,6 +6,6 @@ SELECT
     version
 FROM {{.ActorName}}_events
 WHERE
-    actor_id = $2 AND
-    id > $1
+    actor_id = $1 AND
+    id > $2
 ORDER BY id ASC;

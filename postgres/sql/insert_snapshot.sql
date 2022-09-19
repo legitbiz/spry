@@ -1,4 +1,4 @@
-INSERT INTO {{.ActorName}}_events (
+INSERT INTO {{.ActorName}}_snapshots (
     id,
     actor_id,
     content,

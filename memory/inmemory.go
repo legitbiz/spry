@@ -10,7 +10,7 @@ type InMemoryEventStore struct {
 	Events map[uuid.UUID][]storage.EventRecord
 }
 
-func (store *InMemoryEventStore) Add(events []storage.EventRecord) error {
+func (store *InMemoryEventStore) Add(actorType string, events []storage.EventRecord) error {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
@@ -25,7 +25,7 @@ func (store *InMemoryEventStore) Add(events []storage.EventRecord) error {
 	return nil
 }
 
-func (store *InMemoryEventStore) FetchSince(actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
+func (store *InMemoryEventStore) FetchSince(actorType string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
@@ -40,7 +40,7 @@ type InMemoryCommandStore struct {
 	Commands map[uuid.UUID][]storage.CommandRecord
 }
 
-func (store *InMemoryCommandStore) Add(command storage.CommandRecord) error {
+func (store *InMemoryCommandStore) Add(actorType string, command storage.CommandRecord) error {
 	if store.Commands == nil {
 		store.Commands = map[uuid.UUID][]storage.CommandRecord{}
 	}
@@ -57,7 +57,7 @@ type InMemorySnapshotStore struct {
 	Snapshots map[uuid.UUID][]storage.Snapshot
 }
 
-func (store *InMemorySnapshotStore) Add(snapshot storage.Snapshot) error {
+func (store *InMemorySnapshotStore) Add(actorType string, snapshot storage.Snapshot) error {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -70,7 +70,7 @@ func (store *InMemorySnapshotStore) Add(snapshot storage.Snapshot) error {
 	return nil
 }
 
-func (store *InMemorySnapshotStore) Fetch(actorId uuid.UUID) (storage.Snapshot, error) {
+func (store *InMemorySnapshotStore) Fetch(actorType string, actorId uuid.UUID) (storage.Snapshot, error) {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -93,7 +93,7 @@ type InMemoryMapStore struct {
 	IdMap map[string]uuid.UUID
 }
 
-func (maps *InMemoryMapStore) Add(ids spry.Identifiers, uid uuid.UUID) error {
+func (maps *InMemoryMapStore) Add(actorType string, ids spry.Identifiers, uid uuid.UUID) error {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
@@ -102,7 +102,7 @@ func (maps *InMemoryMapStore) Add(ids spry.Identifiers, uid uuid.UUID) error {
 	return nil
 }
 
-func (maps *InMemoryMapStore) GetId(ids spry.Identifiers) (uuid.UUID, error) {
+func (maps *InMemoryMapStore) GetId(actorType string, ids spry.Identifiers) (uuid.UUID, error) {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
