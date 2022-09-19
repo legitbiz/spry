@@ -46,6 +46,6 @@ func ToJson[T any](obj T) ([]byte, error) {
 
 func FromJson[T any](bytes []byte) (T, error) {
 	obj := *new(T)
-	err := json.Unmarshal(bytes, obj)
+	err := json.Unmarshal(bytes, &obj)
 	return obj, err
 }

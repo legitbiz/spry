@@ -1,6 +1,3 @@
-bin
-.docker/volumes
-
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,go,goland
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,go,goland
 
@@ -14,6 +11,7 @@ bin
 *.dll
 *.so
 *.dylib
+bin
 
 # Test binary, built with `go test -c`
 *.test
@@ -170,3 +168,5 @@ fabric.properties
 *.code-workspace
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,go,goland
+
+.docker/volumes

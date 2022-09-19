@@ -1,16 +1,35 @@
 package memory
 
 import (
+	"context"
+
 	"github.com/arobson/spry"
 	"github.com/arobson/spry/storage"
 	"github.com/gofrs/uuid"
 )
 
+type InMemoryCommandStore struct {
+	Commands map[uuid.UUID][]storage.CommandRecord
+}
+
+func (store *InMemoryCommandStore) Add(ctx context.Context, actorType string, command storage.CommandRecord) error {
+	if store.Commands == nil {
+		store.Commands = map[uuid.UUID][]storage.CommandRecord{}
+	}
+	actorId := command.HandledBy
+	if stored, ok := store.Commands[actorId]; ok {
+		store.Commands[actorId] = append(stored, command)
+	} else {
+		store.Commands[actorId] = []storage.CommandRecord{command}
+	}
+	return nil
+}
+
 type InMemoryEventStore struct {
 	Events map[uuid.UUID][]storage.EventRecord
 }
 
-func (store *InMemoryEventStore) Add(events []storage.EventRecord) error {
+func (store *InMemoryEventStore) Add(ctx context.Context, actorType string, events []storage.EventRecord) error {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
@@ -25,7 +44,7 @@ func (store *InMemoryEventStore) Add(events []storage.EventRecord) error {
 	return nil
 }
 
-func (store *InMemoryEventStore) FetchSince(actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
+func (store *InMemoryEventStore) FetchSince(ctx context.Context, actorType string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
@@ -36,28 +55,36 @@ func (store *InMemoryEventStore) FetchSince(actorId uuid.UUID, eventUUID uuid.UU
 	}
 }
 
-type InMemoryCommandStore struct {
-	Commands map[uuid.UUID][]storage.CommandRecord
+type InMemoryMapStore struct {
+	IdMap map[string]uuid.UUID
 }
 
-func (store *InMemoryCommandStore) Add(command storage.CommandRecord) error {
-	if store.Commands == nil {
-		store.Commands = map[uuid.UUID][]storage.CommandRecord{}
+func (maps *InMemoryMapStore) Add(ctx context.Context, actorType string, ids spry.Identifiers, uid uuid.UUID) error {
+	if maps.IdMap == nil {
+		maps.IdMap = map[string]uuid.UUID{}
 	}
-	actorId := command.HandledBy
-	if stored, ok := store.Commands[actorId]; ok {
-		store.Commands[actorId] = append(stored, command)
-	} else {
-		store.Commands[actorId] = []storage.CommandRecord{command}
-	}
+	key, _ := spry.IdMapToString(ids)
+	maps.IdMap[key] = uid
 	return nil
+}
+
+func (maps *InMemoryMapStore) GetId(ctx context.Context, actorType string, ids spry.Identifiers) (uuid.UUID, error) {
+	if maps.IdMap == nil {
+		maps.IdMap = map[string]uuid.UUID{}
+	}
+	key, _ := spry.IdMapToString(ids)
+	uid := maps.IdMap[key]
+	if uid == uuid.Nil {
+		return uuid.Nil, nil
+	}
+	return uid, nil
 }
 
 type InMemorySnapshotStore struct {
 	Snapshots map[uuid.UUID][]storage.Snapshot
 }
 
-func (store *InMemorySnapshotStore) Add(snapshot storage.Snapshot) error {
+func (store *InMemorySnapshotStore) Add(ctx context.Context, actorType string, snapshot storage.Snapshot) error {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -70,7 +97,7 @@ func (store *InMemorySnapshotStore) Add(snapshot storage.Snapshot) error {
 	return nil
 }
 
-func (store *InMemorySnapshotStore) Fetch(actorId uuid.UUID) (storage.Snapshot, error) {
+func (store *InMemorySnapshotStore) Fetch(ctx context.Context, actorType string, actorId uuid.UUID) (storage.Snapshot, error) {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -80,36 +107,19 @@ func (store *InMemorySnapshotStore) Fetch(actorId uuid.UUID) (storage.Snapshot, 
 	return storage.Snapshot{}, nil
 }
 
+type InMemoryTxProvider struct {
+}
+
+func (provider InMemoryTxProvider) GetTransaction(ctx context.Context) (storage.NoOpTx, error) {
+	return storage.NoOpTx{}, nil
+}
+
 func InMemoryStorage() storage.Storage {
-	return storage.NewStorage(
+	return storage.NewStorage[storage.NoOpTx](
 		&InMemoryMapStore{},
 		&InMemoryCommandStore{},
 		&InMemoryEventStore{},
 		&InMemorySnapshotStore{},
+		&InMemoryTxProvider{},
 	)
-}
-
-type InMemoryMapStore struct {
-	IdMap map[string]uuid.UUID
-}
-
-func (maps *InMemoryMapStore) Add(ids spry.Identifiers, uid uuid.UUID) error {
-	if maps.IdMap == nil {
-		maps.IdMap = map[string]uuid.UUID{}
-	}
-	key, _ := spry.IdMapToString(ids)
-	maps.IdMap[key] = uid
-	return nil
-}
-
-func (maps *InMemoryMapStore) GetId(ids spry.Identifiers) (uuid.UUID, error) {
-	if maps.IdMap == nil {
-		maps.IdMap = map[string]uuid.UUID{}
-	}
-	key, _ := spry.IdMapToString(ids)
-	uid := maps.IdMap[key]
-	if uid == uuid.Nil {
-		return uuid.Nil, nil
-	}
-	return uid, nil
 }

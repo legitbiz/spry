@@ -10,6 +10,9 @@ golint:
 test: build
 	go test -v ./tests
 
+test-pg: build
+	go test -v ./postgres
+
 compose:
 	cd ./.docker && \
 		docker-compose up
