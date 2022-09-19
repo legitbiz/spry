@@ -1,4 +1,4 @@
-package memory
+package postgres
 
 import (
 	"context"
@@ -42,10 +42,13 @@ func (store *PostgresEventStore) Add(actorName string, events []storage.EventRec
 			event.Id,
 			event.ActorId,
 			data,
+			event.CreatedOn,
 			event.CreatedByVersion,
 		)
 	}
 	results := store.Pool.SendBatch(ctx, &batch)
+	_, _ = results.Exec()
+	_, _ = results.Exec()
 	err := results.Close()
 	return err
 }
@@ -252,9 +255,9 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 	)
 
 	return storage.Stores{
-		Commands:  &PostgresCommandStore{Templates: templates, Pool: *pool},
-		Events:    &PostgresEventStore{Templates: templates, Pool: *pool},
-		Maps:      &PostgresMapStore{Templates: templates, Pool: *pool},
-		Snapshots: &PostgresSnapshotStore{Templates: templates, Pool: *pool},
+		Commands:  &PostgresCommandStore{Templates: *templates, Pool: *pool},
+		Events:    &PostgresEventStore{Templates: *templates, Pool: *pool},
+		Maps:      &PostgresMapStore{Templates: *templates, Pool: *pool},
+		Snapshots: &PostgresSnapshotStore{Templates: *templates, Pool: *pool},
 	}
 }

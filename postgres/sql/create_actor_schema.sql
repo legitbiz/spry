@@ -1,7 +1,7 @@
 CREATE IF NOT EXISTS TABLE {{.ActorName}}_commands (
     id              uuid            PRIMARY KEY,
     actor_id        uuid            NOT NULL,
-    content         jsonb
+    content         jsonb,
     created_on      timestamp with time zone            DEFAULT now(),
     vector          varchar(9192),
     version         bigint          NOT NULL,
@@ -12,7 +12,7 @@ CREATE INDEX IF NOT EXISTS {{.ActorName}}_command_actor_idx on {{.ActorName}}_co
 CREATE TABLE IF NOT EXISTS {{.ActorName}}_events (
     id              uuid            PRIMARY KEY,
     actor_id        uuid            NOT NULL,
-    content         jsonb
+    content         jsonb,
     created_on      timestamp with time zone            DEFAULT now(),
     vector          varchar(9192),
     version         bigint          NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_id_map (
     id                      uuid        PRIMARY KEY,
     identifiers             jsonb       NOT NULL,
     actor_id                uuid        NOT NULL,
-    starting_on             timestamp with time zone 	DEFAULT now()
+    starting_on             timestamp with time zone 	DEFAULT now(),
     UNIQUE(identifiers, actor_id)
 );
 
