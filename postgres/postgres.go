@@ -45,11 +45,11 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 		panic("oh no")
 	}
 
-	return storage.Stores[pgx.Tx]{
-		Commands:     &PostgresCommandStore{Templates: *templates, Pool: pool},
-		Events:       &PostgresEventStore{Templates: *templates, Pool: pool},
-		Maps:         &PostgresMapStore{Templates: *templates, Pool: pool},
-		Snapshots:    &PostgresSnapshotStore{Templates: *templates, Pool: pool},
-		Transactions: &PostgresTxProvider{Pool: pool},
-	}
+	return storage.NewStorage[pgx.Tx](
+		&PostgresCommandStore{Templates: *templates, Pool: pool},
+		&PostgresEventStore{Templates: *templates, Pool: pool},
+		&PostgresMapStore{Templates: *templates, Pool: pool},
+		&PostgresSnapshotStore{Templates: *templates, Pool: pool},
+		&PostgresTxProvider{Pool: pool},
+	)
 }

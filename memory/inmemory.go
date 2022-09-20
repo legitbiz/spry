@@ -12,7 +12,10 @@ type InMemoryCommandStore struct {
 	Commands map[uuid.UUID][]storage.CommandRecord
 }
 
-func (store *InMemoryCommandStore) Add(ctx context.Context, actorType string, command storage.CommandRecord) error {
+func (store *InMemoryCommandStore) Add(
+	ctx context.Context,
+	actorType string,
+	command storage.CommandRecord) error {
 	if store.Commands == nil {
 		store.Commands = map[uuid.UUID][]storage.CommandRecord{}
 	}
@@ -44,7 +47,12 @@ func (store *InMemoryEventStore) Add(ctx context.Context, actorType string, even
 	return nil
 }
 
-func (store *InMemoryEventStore) FetchSince(ctx context.Context, actorType string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
+func (store *InMemoryEventStore) FetchSince(
+	ctx context.Context,
+	actorType string,
+	actorId uuid.UUID,
+	eventUUID uuid.UUID,
+	types storage.TypeMap) ([]storage.EventRecord, error) {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
@@ -110,15 +118,23 @@ func (store *InMemorySnapshotStore) Fetch(ctx context.Context, actorType string,
 type InMemoryTxProvider struct {
 }
 
+func (provider InMemoryTxProvider) Commit(ctx context.Context) error {
+	return nil
+}
+
 func (provider InMemoryTxProvider) GetTransaction(ctx context.Context) (storage.NoOpTx, error) {
 	return storage.NoOpTx{}, nil
 }
 
+func (provider InMemoryTxProvider) Rollback(ctx context.Context) error {
+	return nil
+}
+
 func InMemoryStorage() storage.Storage {
 	return storage.NewStorage[storage.NoOpTx](
-		&InMemoryMapStore{},
 		&InMemoryCommandStore{},
 		&InMemoryEventStore{},
+		&InMemoryMapStore{},
 		&InMemorySnapshotStore{},
 		&InMemoryTxProvider{},
 	)
