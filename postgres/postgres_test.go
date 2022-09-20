@@ -205,11 +205,11 @@ func TestSnapshotStorage(t *testing.T) {
 	}
 
 	ctx, _ := store.GetContext(context.Background())
-	err := store.AddSnapshot(ctx, "Player", snap1)
+	err := store.AddSnapshot(ctx, "Player", snap1, true)
 	if err != nil {
 		t.Fatal("failed to persist snapshot 1", err)
 	}
-	err = store.AddSnapshot(ctx, "Player", snap2)
+	err = store.AddSnapshot(ctx, "Player", snap2, true)
 	if err != nil {
 		t.Fatal("failed to persist snapshot 2", err)
 	}

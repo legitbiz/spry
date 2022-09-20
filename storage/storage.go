@@ -38,7 +38,7 @@ type MapStore interface {
 }
 
 type SnapshotStore interface {
-	Add(context.Context, string, Snapshot) error
+	Add(context.Context, string, Snapshot, bool) error
 	Fetch(context.Context, string, uuid.UUID) (Snapshot, error)
 }
 
@@ -50,7 +50,7 @@ type Storage interface {
 	AddCommand(context.Context, string, CommandRecord) error
 	AddEvents(context.Context, string, []EventRecord) error
 	AddMap(context.Context, string, spry.Identifiers, uuid.UUID) error
-	AddSnapshot(context.Context, string, Snapshot) error
+	AddSnapshot(context.Context, string, Snapshot, bool) error
 	FetchEventsSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
 	FetchId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
 	FetchLatestSnapshot(context.Context, string, uuid.UUID) (Snapshot, error)
@@ -77,8 +77,8 @@ func (storage Stores[Tx]) AddMap(ctx context.Context, actorName string, identifi
 	return storage.Maps.Add(ctx, actorName, identifiers, uid)
 }
 
-func (storage Stores[Tx]) AddSnapshot(ctx context.Context, actorName string, snapshot Snapshot) error {
-	return storage.Snapshots.Add(ctx, actorName, snapshot)
+func (storage Stores[Tx]) AddSnapshot(ctx context.Context, actorName string, snapshot Snapshot, allowPartition bool) error {
+	return storage.Snapshots.Add(ctx, actorName, snapshot, allowPartition)
 }
 
 func (storage Stores[Tx]) FetchEventsSince(ctx context.Context, actorName string, actorId uuid.UUID, eventId uuid.UUID) ([]EventRecord, error) {

@@ -75,16 +75,16 @@ func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers)
 		}
 	}
 
+	// extract events
 	eventCount := len(events)
 	es := make([]spry.Event, eventCount)
 	for i, record := range events {
 		es[i] = record.Data.(spry.Event)
 	}
+	// apply events to actor instance
 	actor := snapshot.Data.(T)
-	// apply events to snapshot
 	next := repository.Apply(es, actor)
 
-	// update snapshot record
 	if eventCount > 0 {
 		snapshot.EventsApplied += uint64(eventCount)
 		last := events[len(events)-1]
@@ -96,6 +96,21 @@ func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers)
 
 	if snapshot.ActorId == uuid.Nil {
 		snapshot.ActorId, _ = GetId()
+	}
+
+	config := spry.GetActorMeta[T]()
+	// do we allow snapshotting during read?
+	// if so, have we passed the event threshold?
+	if config.SnapshotDuringRead &&
+		eventCount > config.SnapshotFrequency {
+		snapshot.EventSinceSnapshot = 0
+		// ignore any error creating snapshots during read
+		_ = repository.Storage.AddSnapshot(
+			ctx,
+			repository.ActorName,
+			snapshot,
+			config.SnapshotDuringPartition,
+		)
 	}
 
 	return snapshot, nil
@@ -111,6 +126,7 @@ func (repository Repository[T]) Fetch(ids spry.Identifiers) (T, error) {
 	if err != nil {
 		return getEmpty[T](), err
 	}
+
 	return snapshot.Data.(T), nil
 }
 
@@ -172,12 +188,12 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 		}
 	}
 	snapshot.ActorId = baseline.ActorId
-	snapshot.EventsApplied += uint64(len(events))
 	snapshot.LastCommandId = cmdRecord.Id
 	snapshot.LastCommandOn = cmdRecord.HandledOn
 	snapshot.LastEventId = lastEventRecord.Id
 	snapshot.LastEventOn = lastEventRecord.CreatedOn
-	snapshot.EventsApplied += uint64(len(eventRecords))
+	snapshot.EventsApplied += uint64(len(events))
+	snapshot.EventSinceSnapshot += len(events)
 	snapshot.Version++
 
 	// store id map
@@ -203,13 +219,26 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store snapshot?
-	err = repository.Storage.AddSnapshot(ctx, repository.ActorName, snapshot)
-	if err != nil {
-		return spry.Results[T]{
-			Original: actor,
-			Modified: next,
-			Events:   events,
-			Errors:   []error{err},
+
+	config := spry.GetActorMeta[T]()
+	// do we allow snapshotting during read?
+	// if so, have we passed the event threshold?
+	if config.SnapshotDuringWrite &&
+		snapshot.EventSinceSnapshot >= config.SnapshotFrequency {
+		snapshot.EventSinceSnapshot = 0
+		err = repository.Storage.AddSnapshot(
+			ctx,
+			repository.ActorName,
+			snapshot,
+			config.SnapshotDuringPartition,
+		)
+		if err != nil {
+			return spry.Results[T]{
+				Original: actor,
+				Modified: next,
+				Events:   events,
+				Errors:   []error{err},
+			}
 		}
 	}
 

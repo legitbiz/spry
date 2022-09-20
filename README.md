@@ -1,8 +1,10 @@
 # spry
 
+## `main` build [![CircleCI](https://dl.circleci.com/status-badge/img/gh/arobson/spry/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/arobson/spry/tree/main)
+
 An event sourcing library in Go.
 
-> A simplistic postgres storage and in-memory storage implementation are working.
+> Initial postgres backed and in-memory storage implementation are functional.
 
 ## Use
 
@@ -35,6 +37,21 @@ type Player struct {
 
 func (p Player) GetIdentifiers() spry.Identifiers {
 	return spry.Identifiers{"Name": p.Name}
+}
+
+// Actors may optionally implement a method that returns
+// configuration details to the storage engine in spry
+// to control how often and when spry should take a snapshot.
+
+func (p Player) GetConfiguration() spry.ActorMeta {
+	// defaults are shown below
+	return spry.ActorMeta{
+		snapshotFrequency: 			10, // produces snapshots often
+		snapshotDuringRead: 		false, // prevents snapshotting during fetch (read)
+		snapshotDuringWrite: 		true, // take snapshots during command handling (write)
+		snapshotDuringPartition: 	true, // if supported by the storage adpater, 
+										// snapshot even if a partition is detected
+	}
 }
 
 // Commands are Verb-Noun named structures that target a specific
@@ -173,4 +190,49 @@ In contrast, an event sourced approach like this one has has the following advan
 
 ## Concepts
 
+### Availability and Partition Tolerance
+
+spry provides some configuration behaviors for Actors that allow the application to tune behaviors like snapshotting frequency to adapt to specific data access patterns without forcing application authors to delve into implementation details. That said, it's focus is on providing an approach to event sourcing that is very similar to CRDT's in that storage adapters _can_ detect divergent replicas (incompatible snapshots) and repair them automatically when possible. This means that partitions in your system or storage layer don't have to result in offline modes or degraded availability.
+
+### Emphasis on Simplicity
+
+While spry certainly has a few complex routines that are part of its 
+
+### Actors
+
+An actor's role is to provide data and identifiers that uniquely set it apart from every other Actor of the same type. They can include methods that handle a Command or apply an event but this is a stylist choice for the application authors to make.
+
+### Commands
+
+A command is how we define change to an Actor's state. Instead of mutating the Actor state directly, the command should result in one or more events **or** one or more errors. Events define the changes to take place when applied to the model while errors should explain to the application why the Actor's logic refuses to handle the command.
+
+### Events
+
+Events are essentially a mutator attached to data. With ordering guarantees, we can always load events, apply them in order to a baseline (or new instance) and get the same result. This quality is sometimes referred to as, "commutation" because different processes can derive the same state independent of one another given access to the event log.
+
+### Ordering Guarantees
+
+Spry makes use of [RFC 4122 v6](https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-03#section-5.1) which provides coordination-free, k-ordered, UUIDs. These ids are used as ids across all record types. This should ensure that events and snapshots can always sort in the order they were created. 
+
+### Snapshots
+
+Snapshots are a point-in-time capture of an Actor's state. Creating these at regular, configurable intervals prevents spry from having to read _every_ event that has occurred for a particular actor over its entire history.
+
 ## Storage
+
+### Philosophy
+
+When writing a storage adapter for spry, it's important to remember a few guiding principles:
+
+ * Every Actor should receive its own set of tables/buckets/storage
+ * All write operations should append only (`INSERT` never `UPDATE`)
+ * The UUIDs produced by Spry should never be exposed to the application
+ * Spry expects that the Identifiers map will map to a consistent UUID
+
+### CommandStore
+
+### EventStore
+
+### MapStore
+
+### SnapshotStore

@@ -15,7 +15,7 @@ type PostgresSnapshotStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresSnapshotStore) Add(ctx context.Context, actorName string, snapshot storage.Snapshot) error {
+func (store *PostgresSnapshotStore) Add(ctx context.Context, actorName string, snapshot storage.Snapshot, allowPartition bool) error {
 	query, _ := store.Templates.Execute(
 		"insert_snapshot.sql",
 		queryData(actorName),

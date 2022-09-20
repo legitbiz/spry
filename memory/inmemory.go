@@ -84,7 +84,7 @@ type InMemorySnapshotStore struct {
 	Snapshots map[uuid.UUID][]storage.Snapshot
 }
 
-func (store *InMemorySnapshotStore) Add(ctx context.Context, actorType string, snapshot storage.Snapshot) error {
+func (store *InMemorySnapshotStore) Add(ctx context.Context, actorType string, snapshot storage.Snapshot, allowPartition bool) error {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
