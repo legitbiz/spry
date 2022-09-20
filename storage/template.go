@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"io/fs"
 	"text/template"
 )
 
@@ -30,8 +31,16 @@ func (st StringTemplate) Execute(name string, data any) (string, error) {
 	return buffer.String(), nil
 }
 
-func CreateTemplateFrom(paths ...string) (*StringTemplate, error) {
+func CreateTemplateFromPaths(paths ...string) (*StringTemplate, error) {
 	t, err := template.ParseFiles(paths...)
+	if err != nil {
+		return nil, err
+	}
+	return &StringTemplate{templates: t}, nil
+}
+
+func CreateTemplateFromFS(files fs.FS, paths ...string) (*StringTemplate, error) {
+	t, err := template.ParseFS(files, paths...)
 	if err != nil {
 		return nil, err
 	}
