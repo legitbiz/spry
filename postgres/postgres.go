@@ -24,7 +24,7 @@ func queryData(name string) QueryData {
 func CreatePostgresStorage(connectionURI string) storage.Storage {
 	pool, err := pgxpool.Connect(context.Background(), connectionURI)
 	if err != nil {
-		fmt.Println("failed to connect to the backing store")
+		fmt.Println("failed to connect to the backing store", err)
 		panic("oh no")
 	}
 
