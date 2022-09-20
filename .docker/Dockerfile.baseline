@@ -1,0 +1,7 @@
+FROM golang:1.19.1-alpine3.16
+
+RUN     echo http://ftp.halifax.rwth-aachen.de/alpine/v3.16/main >> /etc/apk/repositories \
+    &&  echo http://ftp.halifax.rwth-aachen.de/alpine/v3.16/community \
+    &&  apk update
+RUN apk add --no-cache alpine-sdk docker docker-compose \
+    &&  go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
