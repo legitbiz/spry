@@ -13,6 +13,7 @@ type Repository[T spry.Actor[T]] struct {
 	ActorType reflect.Type
 	ActorName string
 	Storage   Storage
+	Mapping   TypeMap
 }
 
 func getEmpty[T spry.Actor[T]]() T {
@@ -81,6 +82,7 @@ func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers)
 	for i, record := range events {
 		es[i] = record.Data.(spry.Event)
 	}
+
 	// apply events to actor instance
 	actor := snapshot.Data.(T)
 	next := repository.Apply(es, actor)
@@ -210,6 +212,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	// store events
 	err = repository.Storage.AddEvents(ctx, repository.ActorName, eventRecords)
 	if err != nil {
+		_ = repository.Storage.Rollback(ctx)
 		return spry.Results[T]{
 			Original: actor,
 			Modified: next,
@@ -217,8 +220,6 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 			Errors:   []error{err},
 		}
 	}
-
-	// store snapshot?
 
 	config := spry.GetActorMeta[T]()
 	// do we allow snapshotting during read?
@@ -239,6 +240,17 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 				Events:   events,
 				Errors:   []error{err},
 			}
+		}
+	}
+
+	err = repository.Storage.Commit(ctx)
+	if err != nil {
+		_ = repository.Storage.Rollback(ctx)
+		return spry.Results[T]{
+			Original: actor,
+			Modified: next,
+			Events:   events,
+			Errors:   []error{err},
 		}
 	}
 

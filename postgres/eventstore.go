@@ -44,7 +44,12 @@ func (store *PostgresEventStore) Add(ctx context.Context, actorName string, even
 	return err
 }
 
-func (store *PostgresEventStore) FetchSince(ctx context.Context, actorName string, actorId uuid.UUID, eventUUID uuid.UUID) ([]storage.EventRecord, error) {
+func (store *PostgresEventStore) FetchSince(
+	ctx context.Context,
+	actorName string,
+	actorId uuid.UUID,
+	eventUUID uuid.UUID,
+	types storage.TypeMap) ([]storage.EventRecord, error) {
 	query, _ := store.Templates.Execute(
 		"select_events_since.sql",
 		queryData(actorName),
@@ -68,6 +73,10 @@ func (store *PostgresEventStore) FetchSince(ctx context.Context, actorName strin
 			return nil, err
 		}
 		record, err := spry.FromJson[storage.EventRecord](buffer)
+		if err != nil {
+			return nil, err
+		}
+		record.Data, err = types.AsEvent(record.Type, record.Data)
 		if err != nil {
 			return nil, err
 		}

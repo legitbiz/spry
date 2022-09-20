@@ -5,4 +5,5 @@ INSERT INTO {{.ActorName}}_id_map (
     starting_on
 ) VALUES (
     $1, $2, $3, $4
-);
+)
+ON CONFLICT DO NOTHING;

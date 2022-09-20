@@ -29,7 +29,7 @@ type CommandStore interface {
 
 type EventStore interface {
 	Add(context.Context, string, []EventRecord) error
-	FetchSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
+	FetchSince(context.Context, string, uuid.UUID, uuid.UUID, TypeMap) ([]EventRecord, error)
 }
 
 type MapStore interface {
@@ -44,6 +44,8 @@ type SnapshotStore interface {
 
 type TxProvider[T any] interface {
 	GetTransaction(ctx context.Context) (T, error)
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
 }
 
 type Storage interface {
@@ -51,16 +53,20 @@ type Storage interface {
 	AddEvents(context.Context, string, []EventRecord) error
 	AddMap(context.Context, string, spry.Identifiers, uuid.UUID) error
 	AddSnapshot(context.Context, string, Snapshot, bool) error
+	Commit(context.Context) error
 	FetchEventsSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
 	FetchId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
 	FetchLatestSnapshot(context.Context, string, uuid.UUID) (Snapshot, error)
 	GetContext(context.Context) (context.Context, error)
+	RegisterPrimitives(...any)
+	Rollback(context.Context) error
 }
 
 type Stores[Tx any] struct {
 	Commands     CommandStore
 	Events       EventStore
 	Maps         MapStore
+	Primitives   TypeMap
 	Snapshots    SnapshotStore
 	Transactions TxProvider[Tx]
 }
@@ -81,8 +87,12 @@ func (storage Stores[Tx]) AddSnapshot(ctx context.Context, actorName string, sna
 	return storage.Snapshots.Add(ctx, actorName, snapshot, allowPartition)
 }
 
+func (storage Stores[Tx]) Commit(ctx context.Context) error {
+	return storage.Transactions.Commit(ctx)
+}
+
 func (storage Stores[Tx]) FetchEventsSince(ctx context.Context, actorName string, actorId uuid.UUID, eventId uuid.UUID) ([]EventRecord, error) {
-	return storage.Events.FetchSince(ctx, actorName, actorId, eventId)
+	return storage.Events.FetchSince(ctx, actorName, actorId, eventId, storage.Primitives)
 }
 
 func (storage Stores[Tx]) FetchId(ctx context.Context, actorName string, identifiers spry.Identifiers) (uuid.UUID, error) {
@@ -101,10 +111,18 @@ func (storage Stores[Tx]) GetContext(ctx context.Context) (context.Context, erro
 	return context.WithValue(ctx, tx_key, newTx), nil
 }
 
+func (storage Stores[Tx]) RegisterPrimitives(types ...any) {
+	storage.Primitives.AddTypes(types...)
+}
+
+func (storage Stores[Tx]) Rollback(ctx context.Context) error {
+	return storage.Transactions.Rollback(ctx)
+}
+
 func NewStorage[Tx any](
-	maps MapStore,
 	commands CommandStore,
 	events EventStore,
+	maps MapStore,
 	snapshots SnapshotStore,
 	txs TxProvider[Tx]) Storage {
 	return Stores[Tx]{
@@ -113,5 +131,6 @@ func NewStorage[Tx any](
 		Maps:         maps,
 		Snapshots:    snapshots,
 		Transactions: txs,
+		Primitives:   CreateTypeMap(),
 	}
 }
