@@ -126,6 +126,12 @@ func FromMemory[T spry.Actor[T]]() spry.Repository[T] {
 // creating a Repository from a PostgresStore
 func FromPostgres[T spry.Actor[T]](connectionURI string) spry.Repository[T] {
 	postgresStore := postgres.CreatePostgresStorage(connectionURI)
+	// any disk backed stores will require you to register event types
+	// with the storage mechanism so it will know how to correctly deserialize
+	// those events on fetch
+	postgresStore.RegisterPrimitives({
+		PlayerCreated{}
+	})
 	return storage.GetRepositoryFor[T](postgresStore)
 }
 
