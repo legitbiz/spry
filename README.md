@@ -1,8 +1,10 @@
 # spry
 
+## `main` build [![CircleCI](https://dl.circleci.com/status-badge/img/gh/arobson/spry/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/arobson/spry/tree/main)
+
 An event sourcing library in Go.
 
-> A simplistic postgres storage and in-memory storage implementation are working.
+> Initial postgres backed and in-memory storage implementation are functional.
 
 ## Use
 

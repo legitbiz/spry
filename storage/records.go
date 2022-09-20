@@ -33,6 +33,8 @@ type Snapshot struct {
 	CreatedOn time.Time `json:"createdOn"`
 	// the number of events applied to reach the present state
 	EventsApplied uint64 `json:"eventsApplied"`
+	// the number of events since the last snapshot was created
+	EventSinceSnapshot int
 	// the UUID of the last event played against the instance
 	LastEventId uuid.UUID `json:"lastEventId"`
 	// the UUID of the last command handled
@@ -46,7 +48,7 @@ type Snapshot struct {
 }
 
 func (snapshot Snapshot) IsValid() bool {
-	return snapshot.Id.IsNil()
+	return !snapshot.Id.IsNil()
 }
 
 func NewSnapshot(actor any) (Snapshot, error) {
