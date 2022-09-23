@@ -6,8 +6,56 @@ import (
 
 type Identifiers = map[string]any
 
+type IdentifierSet = map[string][]Identifier
+
 type Actor[T any] interface {
 	GetIdentifiers() Identifiers
+}
+
+type Aggregate[T any] interface {
+	GetIdentifiers() Identifiers
+	GetIdentifierSet() IdSet
+}
+
+type IdSet struct {
+	ids IdentifierSet
+}
+
+func (set *IdSet) AddIdsFor(actorType string, ids Identifiers) {
+	list, ok := set.ids[actorType]
+	if !ok {
+		list = []Identifiers{ids}
+	} else {
+		list = append(list, ids)
+	}
+	set.ids[actorType] = list
+}
+
+func (set *IdSet) GetIdsFor(actorType string) []Identifiers {
+	list, ok := set.ids[actorType]
+	if ok {
+		return list
+	}
+	return []Identifiers{}
+}
+
+func (set *IdSet) RemoveIdsFrom(actorType string) bool {
+	list, ok := set.ids[actorType]
+	if ok {
+		list.		
+		return false
+	}
+	return false
+}
+
+func (set *IdSet) ToIdentifierSet() IdentifierSet {
+	return set.ids
+}
+
+func CreateIdSet() IdSet {
+	return IdSet{
+		ids: IdentifierSet{},
+	}
 }
 
 type ActorMeta struct {
