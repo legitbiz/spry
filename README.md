@@ -229,7 +229,7 @@ application why the Actor's logic refuses to handle the command.
 
 Events are essentially a mutator attached to data. With ordering guarantees, we can always load 
 events, apply them in order to a baseline (or new instance) and get the same result. This quality 
-is sometimes referred to as, "commutation" because different processes can derive the same state 
+is sometimes referred to as _commutation_ because different processes can derive the same state 
 independent of one another given access to the event log.
 
 ### Ordering Guarantees
