@@ -202,7 +202,7 @@ In contrast, an event-sourced approach like this one has the following advantage
 
 spry provides some configuration behaviors for Actors that allow the application to tune behaviors 
 like snapshotting frequency to adapt to specific data access patterns without forcing application 
-authors to delve into implementation details. That said, it's focus is on providing an approach to 
+authors to delve into implementation details. That said, its focus is on providing an approach to 
 event sourcing that is very similar to CRDTs in that storage adapters _can_ detect divergent 
 replicas (incompatible snapshots) and repair them automatically when possible. This means that 
 partitions in your system or storage layer don't have to result in offline modes or degraded 
