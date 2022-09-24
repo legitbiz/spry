@@ -71,7 +71,7 @@ func (maps *InMemoryMapStore) Add(ctx context.Context, actorType string, ids spr
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
-	key, _ := spry.IdMapToString(ids)
+	key, _ := spry.IdentifiersToString(ids)
 	maps.IdMap[key] = uid
 	return nil
 }
@@ -80,7 +80,7 @@ func (maps *InMemoryMapStore) GetId(ctx context.Context, actorType string, ids s
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
-	key, _ := spry.IdMapToString(ids)
+	key, _ := spry.IdentifiersToString(ids)
 	uid := maps.IdMap[key]
 	if uid == uuid.Nil {
 		return uuid.Nil, nil

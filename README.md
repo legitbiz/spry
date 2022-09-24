@@ -244,6 +244,18 @@ Snapshots are a point-in-time capture of an Actor's state. Creating these at reg
 intervals prevents spry from having to read _every_ event that has occurred for a particular actor 
 over its entire history.
 
+### Projections
+
+A projection is state derived through defined operations over an even stream. An Actor is a subset of projection in spry. Each Actor type in spry produces and derives its state from a specific event stream. There are two other types of projections in spry:
+
+#### Aggregate Projection
+
+An Aggregate Projection provides a mechanism for defining an Actor model that also includes event streams from other Actor types. This mechanism allows the application more flexibility in how complex sets of behaviors interact in an event sourced system.
+
+#### Query Projection
+
+A Query Projection is like an Aggregate Project except it does not require defined relationships between Actors in order to consume events from multiple streams. Queries do not get their event stream because the do not handle commands or produce events.
+
 ## Storage
 
 ### Philosophy

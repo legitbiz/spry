@@ -6,7 +6,7 @@ import (
 
 type Identifiers = map[string]any
 
-type IdentifierSet = map[string][]Identifier
+type IdentifierSet = map[string][]Identifiers
 
 type Actor[T any] interface {
 	GetIdentifiers() Identifiers
@@ -21,12 +21,17 @@ type IdSet struct {
 	ids IdentifierSet
 }
 
-func (set *IdSet) AddIdsFor(actorType string, ids Identifiers) {
+func (set *IdSet) AddIdsFor(actorType string, ids ...Identifiers) {
 	list, ok := set.ids[actorType]
 	if !ok {
-		list = []Identifiers{ids}
-	} else {
-		list = append(list, ids)
+		list = make([]Identifiers, len(ids))
+	}
+	for _, id := range ids {
+		if !ok {
+			list = []Identifiers{id}
+		} else {
+			list = append(list, id)
+		}
 	}
 	set.ids[actorType] = list
 }
@@ -39,11 +44,29 @@ func (set *IdSet) GetIdsFor(actorType string) []Identifiers {
 	return []Identifiers{}
 }
 
-func (set *IdSet) RemoveIdsFrom(actorType string) bool {
+func (set *IdSet) RemoveIdsFrom(actorType string, ids ...Identifiers) bool {
 	list, ok := set.ids[actorType]
+	lookup := map[string]int{}
+	for i, id := range list {
+		s, _ := IdentifiersToString(id)
+		lookup[s] = i
+	}
 	if ok {
-		list.		
-		return false
+		index := make([]int, len(ids))
+		for i, id := range ids {
+			s, _ := IdentifiersToString(id)
+			if idx, ok := lookup[s]; ok {
+				index[i] = idx
+			}
+		}
+		for i := len(index) - 1; i >= 0; i-- {
+			idx := index[i]
+			copy(list[idx:], list[idx+1:])
+			list[len(list)-1] = nil
+			list = list[:len(list)-1]
+		}
+		set.ids[actorType] = list
+		return true
 	}
 	return false
 }
@@ -110,7 +133,7 @@ type Repository[T Actor[T]] interface {
 	Handle(command Command) Results[T]
 }
 
-func IdMapToString(ids Identifiers) (string, error) {
+func IdentifiersToString(ids Identifiers) (string, error) {
 	bytes, err := ToJson(ids)
 	if err != nil {
 		return "", err
