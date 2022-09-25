@@ -15,12 +15,7 @@ type PostgresEventStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresEventStore) Add(ctx context.Context, actorName string, events []storage.EventRecord) error {
-
-	query, _ := store.Templates.Execute(
-		"insert_event.sql",
-		queryData(actorName),
-	)
+func (store *PostgresEventStore) Add(ctx context.Context, events []storage.EventRecord) error {
 	tx := storage.GetTx[pgx.Tx](ctx)
 	batch := pgx.Batch{}
 	for _, event := range events {
@@ -28,6 +23,10 @@ func (store *PostgresEventStore) Add(ctx context.Context, actorName string, even
 		if err != nil {
 			return err
 		}
+		query, _ := store.Templates.Execute(
+			"insert_event.sql",
+			queryData(event.ActorType),
+		)
 		batch.Queue(
 			query,
 			event.Id,

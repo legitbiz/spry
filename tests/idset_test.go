@@ -92,18 +92,27 @@ func TestIdSetBehavior(t *testing.T) {
 	idstrings = IdsToStrings(list)
 	correct = []string{s1, s2, s3, s4, s5, s6, s7, s8, s10}
 	matching = AreEqual(correct, idstrings)
+	if !matching {
+		t.Error("ids for type did not match expectations")
+	}
 
 	ids.RemoveIdsFrom("Player", spry.Identifiers{"Name": "Mia"})
 	list = ids.GetIdsFor("Player")
 	idstrings = IdsToStrings(list)
 	correct = []string{s1, s2, s3, s5, s6, s7, s8, s10}
 	matching = AreEqual(correct, idstrings)
+	if !matching {
+		t.Error("ids for type did not match expectations")
+	}
 
 	ids.RemoveIdsFrom("Player", spry.Identifiers{"Name": "Chris"})
 	list = ids.GetIdsFor("Player")
 	idstrings = IdsToStrings(list)
 	correct = []string{s1, s2, s3, s5, s6, s7, s8}
 	matching = AreEqual(correct, idstrings)
+	if !matching {
+		t.Error("ids for type did not match expectations")
+	}
 }
 
 func AreEqual(correct []string, idstrings []string) bool {

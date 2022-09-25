@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"github.com/arobson/core"
 	"github.com/arobson/spry"
 	"github.com/arobson/spry/core"
 )
@@ -39,6 +38,7 @@ func (m Motorist) GetIdentifierSet() spry.IdentifierSet {
 }
 
 type VehicleRegistered struct {
+	spry.EventMetadata
 	VIN   string
 	Type  string
 	Make  string
@@ -61,6 +61,7 @@ func (vr VehicleRegistered) Apply(actor any) any {
 	case Motorist:
 		a.Vehicles = append(a.Vehicles, vr.toVehicle())
 	}
+	return actor
 }
 
 type RegisterVehicle struct {
@@ -75,4 +76,5 @@ type RegisterVehicle struct {
 
 func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, error) {
 
+	return []spry.Event{}, nil
 }

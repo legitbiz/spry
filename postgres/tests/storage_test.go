@@ -35,7 +35,7 @@ func TestCommandStorage(t *testing.T) {
 
 	err := store.AddCommand(ctx, "Player", cr1)
 	if err != nil {
-		t.Fatal("failed to store command correctly")
+		t.Fatal("failed to store command correctly", err)
 	}
 
 	tx := storage.GetTx[pgx.Tx](ctx)
@@ -79,7 +79,7 @@ func TestEventStorage(t *testing.T) {
 
 	ctx, _ := store.GetContext(context.Background())
 
-	err := store.AddEvents(ctx, "Player", []storage.EventRecord{
+	err := store.AddEvents(ctx, []storage.EventRecord{
 		er1,
 		er2,
 	})

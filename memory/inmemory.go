@@ -32,7 +32,7 @@ type InMemoryEventStore struct {
 	Events map[uuid.UUID][]storage.EventRecord
 }
 
-func (store *InMemoryEventStore) Add(ctx context.Context, actorType string, events []storage.EventRecord) error {
+func (store *InMemoryEventStore) Add(ctx context.Context, events []storage.EventRecord) error {
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}

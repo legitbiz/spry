@@ -107,13 +107,18 @@ func NewEventRecord(event spry.Event) (EventRecord, error) {
 	if err != nil {
 		return EventRecord{}, err
 	}
-
-	return EventRecord{
+	er := EventRecord{
 		Id:        id,
 		Type:      eventName,
 		CreatedOn: time.Now().UTC(),
 		Data:      event,
-	}, nil
+	}
+	if n, ok := event.(spry.Namespaced); ok {
+		meta := n.GetEventMeta()
+		er.ActorType = meta.CreatedFor
+		er.CreatedBy = meta.CreatedBy
+	}
+	return er, nil
 }
 
 type CommandRecord struct {

@@ -1,11 +1,11 @@
-CREATE IF NOT EXISTS TABLE {{.ActorName}}_commands (
+CREATE TABLE IF NOT EXISTS {{.ActorName}}_commands (
     id              uuid            PRIMARY KEY,
     actor_id        uuid            NOT NULL,
     content         jsonb,
     created_on      timestamp with time zone            DEFAULT now(),
     vector          varchar(9192),
-    version         bigint          NOT NULL,
-)
+    version         bigint          NOT NULL
+);
 
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_command_actor_idx on {{.ActorName}}_commands(actor_id);
 
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_events (
     content         jsonb,
     created_on      timestamp with time zone            DEFAULT now(),
     vector          varchar(9192),
-    version         bigint          NOT NULL,
+    version         bigint          NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_event_actor_idx on {{.ActorName}}_events(actor_id);
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_snapshots (
 	last_event_id					uuid 	        NOT NULL,
     last_event_applied_on			timestamp with time zone  		NOT NULL,
 	vector							varchar(9192),
-	version							bigint 			NOT NULL,
+	version							bigint 			NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_snapshot_actor_idx on {{.ActorName}}_snapshots(actor_id);

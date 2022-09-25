@@ -12,7 +12,7 @@ type Actor[T any] interface {
 	GetIdentifiers() Identifiers
 }
 
-type Aggregate[T any] interface {
+type Aggregator[T any] interface {
 	GetIdentifiers() Identifiers
 	GetIdentifierSet() IdSet
 }
@@ -125,6 +125,19 @@ type Command interface {
 
 type Event interface {
 	Apply(any) any
+}
+
+type EventMetadata struct {
+	CreatedBy  string
+	CreatedFor string
+}
+
+func (e EventMetadata) GetEventMeta() EventMetadata {
+	return e
+}
+
+type Namespaced interface {
+	GetEventMeta() EventMetadata
 }
 
 type Repository[T Actor[T]] interface {

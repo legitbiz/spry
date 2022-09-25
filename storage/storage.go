@@ -28,7 +28,7 @@ type CommandStore interface {
 }
 
 type EventStore interface {
-	Add(context.Context, string, []EventRecord) error
+	Add(context.Context, []EventRecord) error
 	FetchSince(context.Context, string, uuid.UUID, uuid.UUID, TypeMap) ([]EventRecord, error)
 }
 
@@ -50,7 +50,7 @@ type TxProvider[T any] interface {
 
 type Storage interface {
 	AddCommand(context.Context, string, CommandRecord) error
-	AddEvents(context.Context, string, []EventRecord) error
+	AddEvents(context.Context, []EventRecord) error
 	AddMap(context.Context, string, spry.Identifiers, uuid.UUID) error
 	AddSnapshot(context.Context, string, Snapshot, bool) error
 	Commit(context.Context) error
@@ -75,8 +75,8 @@ func (storage Stores[Tx]) AddCommand(ctx context.Context, actorName string, comm
 	return storage.Commands.Add(ctx, actorName, command)
 }
 
-func (storage Stores[Tx]) AddEvents(ctx context.Context, actorName string, events []EventRecord) error {
-	return storage.Events.Add(ctx, actorName, events)
+func (storage Stores[Tx]) AddEvents(ctx context.Context, events []EventRecord) error {
+	return storage.Events.Add(ctx, events)
 }
 
 func (storage Stores[Tx]) AddMap(ctx context.Context, actorName string, identifiers spry.Identifiers, uid uuid.UUID) error {

@@ -170,8 +170,12 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 		}
 
 		record.ActorId = baseline.ActorId
-		record.ActorType = repository.ActorName
-		record.CreatedBy = repository.ActorName
+		if record.ActorType == "" {
+			record.ActorType = repository.ActorName
+		}
+		if record.CreatedBy == "" {
+			record.CreatedBy = repository.ActorName
+		}
 		record.CreatedById = baseline.ActorId
 		record.CreatedByVersion = baseline.Version
 		record.CreatedOn = time.Now()
@@ -210,7 +214,7 @@ func (repository Repository[T]) Handle(command spry.Command) spry.Results[T] {
 	}
 
 	// store events
-	err = repository.Storage.AddEvents(ctx, repository.ActorName, eventRecords)
+	err = repository.Storage.AddEvents(ctx, eventRecords)
 	if err != nil {
 		_ = repository.Storage.Rollback(ctx)
 		return spry.Results[T]{
