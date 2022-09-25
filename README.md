@@ -262,6 +262,7 @@ A Query Projection is like an Aggregate Project except it does not require defin
 
 When writing a storage adapter for spry, it's important to remember a few guiding principles:
 
+ * Every app/service is expected to have its own database
  * Every Actor should receive its own set of tables/buckets/storage
  * All write operations should append only (`INSERT` never `UPDATE`)
  * The UUIDs produced by Spry should never be exposed to the application

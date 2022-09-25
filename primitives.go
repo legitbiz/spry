@@ -12,8 +12,7 @@ type Actor[T any] interface {
 	GetIdentifiers() Identifiers
 }
 
-type Aggregator[T any] interface {
-	GetIdentifiers() Identifiers
+type Aggregate[T any] interface {
 	GetIdentifierSet() IdSet
 }
 
@@ -119,7 +118,6 @@ func GetActorMeta[T Actor[T]]() ActorMeta {
 }
 
 type Command interface {
-	GetIdentifiers() Identifiers
 	Handle(any) ([]Event, []error)
 }
 

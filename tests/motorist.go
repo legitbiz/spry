@@ -75,6 +75,16 @@ type RegisterVehicle struct {
 }
 
 func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, error) {
-
+	switch a := actor.(type) {
+	case *Motorist:
+		v := Vehicle{
+			VIN:   rv.VIN,
+			Type:  rv.Type,
+			Make:  rv.Make,
+			Model: rv.Model,
+			Color: rv.Color,
+		}
+		a.Vehicles = append(a.Vehicles, v)
+	}
 	return []spry.Event{}, nil
 }

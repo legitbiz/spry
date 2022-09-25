@@ -15,7 +15,7 @@ func TestGetRepositoryFor(t *testing.T) {
 	}
 }
 
-func TestHandleCommandSuccessfully(t *testing.T) {
+func TestActorHandlesCommandSuccessfully(t *testing.T) {
 	store := memory.InMemoryStorage()
 	repo := storage.GetRepositoryFor[Player](store)
 	results := repo.Handle(CreatePlayer{Name: "Bob"})
@@ -67,3 +67,22 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 		t.Error("incorrect creation of new actor occurred")
 	}
 }
+
+//func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
+//	store := memory.InMemoryStorage()
+//	motorists := storage.GetRepositoryFor[Motorist](store)
+//	vehicles := storage.GetRepositoryFor[Vehicle](store)
+//
+//	r1 := motorists.Handle()
+//
+//	r2 := motorists.Handle(RegisterVehicle{
+//		VIN:          "abc123",
+//		Type:         "Moped",
+//		Make:         "Hyundai",
+//		Model:        "Scootchum",
+//		Color:        "Blurple",
+//		OwnerLicense: "001020304",
+//		OwnerState:   "KS",
+//	})
+//
+//}
