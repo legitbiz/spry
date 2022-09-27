@@ -4,26 +4,8 @@ import (
 	"testing"
 
 	"github.com/arobson/spry"
+	"github.com/arobson/spry/core"
 )
-
-func mapper[T any, U any](t []T, m func(T) U) []U {
-	u := make([]U, len(t))
-	for i, x := range t {
-		u[i] = m(x)
-	}
-	return u
-}
-
-func reducer[T any, A any](
-	t []T,
-	r func(A, T, int) A,
-	s A) A {
-	a := s
-	for i, x := range t {
-		a = r(a, x, i)
-	}
-	return a
-}
 
 func TestIdSetBehavior(t *testing.T) {
 	ids := spry.CreateIdSet()
@@ -116,14 +98,14 @@ func TestIdSetBehavior(t *testing.T) {
 }
 
 func AreEqual(correct []string, idstrings []string) bool {
-	matching := reducer(correct, func(m bool, id string, i int) bool {
+	matching := core.Reducer(correct, func(m bool, id string, i int) bool {
 		return m && id == idstrings[i]
 	}, true)
 	return matching
 }
 
 func IdsToStrings(list []spry.Identifiers) []string {
-	return mapper(
+	return core.Mapper(
 		list,
 		func(x spry.Identifiers) string {
 			s, _ := spry.IdentifiersToString(x)

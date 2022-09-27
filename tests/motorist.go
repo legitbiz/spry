@@ -5,6 +5,14 @@ import (
 	"github.com/arobson/spry/core"
 )
 
+type VehicleId struct {
+	VIN string
+}
+
+func (v VehicleId) GetIdentifiers() spry.Identifiers {
+	return spry.Identifiers{"VIN": v.VIN}
+}
+
 type Vehicle struct {
 	VIN   string
 	Type  string
@@ -18,13 +26,17 @@ func (v Vehicle) GetIdentifiers() spry.Identifiers {
 }
 
 type Motorist struct {
-	License  string
-	State    string
+	MotoristId
 	Name     string
 	Vehicles []Vehicle
 }
 
-func (m Motorist) GetIdentifiers() spry.Identifiers {
+type MotoristId struct {
+	License string
+	State   string
+}
+
+func (m MotoristId) GetIdentifiers() spry.Identifiers {
 	return spry.Identifiers{"License": m.License, "State": m.State}
 }
 
@@ -39,7 +51,8 @@ func (m Motorist) GetIdentifierSet() spry.IdentifierSet {
 
 type VehicleRegistered struct {
 	spry.EventMetadata
-	VIN   string
+	MotoristId
+	VehicleId
 	Type  string
 	Make  string
 	Model string
@@ -65,7 +78,8 @@ func (vr VehicleRegistered) Apply(actor any) any {
 }
 
 type RegisterVehicle struct {
-	VIN          string
+	MotoristId
+	VehicleId
 	Type         string
 	Make         string
 	Model        string
@@ -74,17 +88,24 @@ type RegisterVehicle struct {
 	OwnerState   string
 }
 
+func (rv RegisterVehicle) GetIdentifierSet() spry.IdentifierSet {
+	return spry.IdentifierSet{
+		"Player":  []spry.Identifiers{{"License": rv.License, "State": rv.State}},
+		"Vehicle": []spry.Identifiers{{"VIN": rv.VIN}},
+	}
+}
+
 func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, error) {
-	switch a := actor.(type) {
+	switch actor.(type) {
 	case *Motorist:
-		v := Vehicle{
-			VIN:   rv.VIN,
-			Type:  rv.Type,
-			Make:  rv.Make,
-			Model: rv.Model,
-			Color: rv.Color,
-		}
-		a.Vehicles = append(a.Vehicles, v)
+		return []spry.Event{
+			VehicleRegistered{
+				EventMetadata: spry.EventMetadata{
+					CreatedBy:  "Motorist",
+					CreatedFor: "Vehicle",
+				},
+			},
+		}, nil
 	}
 	return []spry.Event{}, nil
 }
