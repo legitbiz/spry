@@ -68,21 +68,24 @@ func TestActorHandlesCommandSuccessfully(t *testing.T) {
 	}
 }
 
-//func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
-//	store := memory.InMemoryStorage()
-//	motorists := storage.GetRepositoryFor[Motorist](store)
-//	vehicles := storage.GetRepositoryFor[Vehicle](store)
-//
-//	r1 := motorists.Handle()
-//
-//	r2 := motorists.Handle(RegisterVehicle{
-//		VIN:          "abc123",
-//		Type:         "Moped",
-//		Make:         "Hyundai",
-//		Model:        "Scootchum",
-//		Color:        "Blurple",
-//		OwnerLicense: "001020304",
-//		OwnerState:   "KS",
-//	})
-//
-//}
+func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
+	store := memory.InMemoryStorage()
+	motorists := storage.GetRepositoryFor[Motorist](store)
+	vehicles := storage.GetRepositoryFor[Vehicle](store)
+
+	rv1 := RegisterVehicle{
+		MotoristId: MotoristId{
+			License: "008767890",
+			State:   "CA",
+		},
+		VehicleId: VehicleId{
+			VIN: "001002003",
+		},
+		Type:  "Moped",
+		Make:  "Hyundai",
+		Model: "Scootchum",
+		Color: "Blurple",
+	}
+	r1 := motorists.Handle()
+
+}

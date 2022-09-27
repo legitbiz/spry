@@ -14,7 +14,7 @@ func (v VehicleId) GetIdentifiers() spry.Identifiers {
 }
 
 type Vehicle struct {
-	VIN   string
+	VehicleId
 	Type  string
 	Make  string
 	Model string
@@ -36,12 +36,13 @@ type MotoristId struct {
 	State   string
 }
 
-func (m MotoristId) GetIdentifiers() spry.Identifiers {
+func (m MotoristId) getIdentifiers() spry.Identifiers {
 	return spry.Identifiers{"License": m.License, "State": m.State}
 }
 
 func (m Motorist) GetIdentifierSet() spry.IdentifierSet {
 	return spry.IdentifierSet{
+		"Motorist": []spry.Identifiers{m.getIdentifiers()},
 		"Vehicle": core.Mapper(
 			m.Vehicles,
 			func(v Vehicle) spry.Identifiers { return v.GetIdentifiers() },
@@ -61,11 +62,18 @@ type VehicleRegistered struct {
 
 func (vr VehicleRegistered) toVehicle() Vehicle {
 	return Vehicle{
-		VIN:   vr.VIN,
-		Type:  vr.Type,
-		Make:  vr.Make,
-		Model: vr.Model,
-		Color: vr.Color,
+		VehicleId: vr.VehicleId,
+		Type:      vr.Type,
+		Make:      vr.Make,
+		Model:     vr.Model,
+		Color:     vr.Color,
+	}
+}
+
+func (vr VehicleRegistered) GetIdentifierSet() spry.IdentifierSet {
+	return spry.IdentifierSet{
+		"Motorist": []spry.Identifiers{vr.getIdentifiers()},
+		"Vehicle":  []spry.Identifiers{vr.GetIdentifiers()},
 	}
 }
 
@@ -80,18 +88,16 @@ func (vr VehicleRegistered) Apply(actor any) any {
 type RegisterVehicle struct {
 	MotoristId
 	VehicleId
-	Type         string
-	Make         string
-	Model        string
-	Color        string
-	OwnerLicense string
-	OwnerState   string
+	Type  string
+	Make  string
+	Model string
+	Color string
 }
 
 func (rv RegisterVehicle) GetIdentifierSet() spry.IdentifierSet {
 	return spry.IdentifierSet{
-		"Player":  []spry.Identifiers{{"License": rv.License, "State": rv.State}},
-		"Vehicle": []spry.Identifiers{{"VIN": rv.VIN}},
+		"Motorist": []spry.Identifiers{rv.getIdentifiers()},
+		"Vehicle":  []spry.Identifiers{rv.GetIdentifiers()},
 	}
 }
 
@@ -104,6 +110,10 @@ func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, error) {
 					CreatedBy:  "Motorist",
 					CreatedFor: "Vehicle",
 				},
+				Type:  rv.Type,
+				Make:  rv.Make,
+				Model: rv.Model,
+				Color: rv.Color,
 			},
 		}, nil
 	}

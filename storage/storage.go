@@ -53,6 +53,7 @@ type Storage interface {
 	AddEvents(context.Context, []EventRecord) error
 	AddMap(context.Context, string, spry.Identifiers, uuid.UUID) error
 	AddSnapshot(context.Context, string, Snapshot, bool) error
+	AddLink(context.Context, uuid.UUID, uuid.UUID)
 	Commit(context.Context) error
 	FetchEventsSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
 	FetchId(context.Context, string, spry.Identifiers) (uuid.UUID, error)

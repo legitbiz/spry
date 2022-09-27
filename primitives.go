@@ -104,11 +104,11 @@ var default_meta = ActorMeta{
 	SnapshotDuringPartition: true,
 }
 
-func getEmpty[T Actor[T]]() T {
+func getEmpty[T any]() T {
 	return *new(T)
 }
 
-func GetActorMeta[T Actor[T]]() ActorMeta {
+func GetActorMeta[T any]() ActorMeta {
 	var empty any = getEmpty[T]()
 	hasMeta, ok := empty.(HasMeta)
 	if ok {
@@ -152,7 +152,7 @@ func IdentifiersToString(ids Identifiers) (string, error) {
 	return string(bytes), nil
 }
 
-type Results[T Actor[T]] struct {
+type Results[T any] struct {
 	Original T
 	Modified T
 	Events   []Event

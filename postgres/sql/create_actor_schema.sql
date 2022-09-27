@@ -31,6 +31,20 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_id_map (
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_id_map_actor_idx on {{.ActorName}}_id_map(actor_id);
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_id_map_ids_idx on {{.ActorName}}_id_map(identifiers);
 
+CREATE TABLE IF NOT EXISTS {{.ActorName}}_link (
+    id                      uuid            PRIMARY KEY,
+    parent_type             varchar(128)    NOT NULL,
+    parent_id               uuid            NOT NULL,
+    child_id                uuid            NOT NULL,
+    child_type              varchar(128)    NOT NULL,
+    active                  bool            DEFAULT(true),
+    starting_on             timestamp with time zone 	DEFAULT now(),
+    UNIQUE(parent_id, child_id)
+);
+
+CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_parent_idx on {{.ActorName}}_link(parent_id);
+CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_child_idx on {{.ActorName}}_link(child_id);
+
 CREATE TABLE IF NOT EXISTS {{.ActorName}}_snapshots (
 	id								uuid	        PRIMARY KEY,
     actor_id                        uuid            NOT NULL,
