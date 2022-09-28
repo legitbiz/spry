@@ -8,6 +8,8 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+type IdLinks map[string]map[uuid.UUID]map[string][]uuid.UUID
+
 type InMemoryCommandStore struct {
 	Commands map[uuid.UUID][]storage.CommandRecord
 }
@@ -64,15 +66,34 @@ func (store *InMemoryEventStore) FetchSince(
 }
 
 type InMemoryMapStore struct {
-	IdMap map[string]uuid.UUID
+	IdMap   map[string]uuid.UUID
+	LinkMap IdLinks
 }
 
-func (maps *InMemoryMapStore) Add(ctx context.Context, actorType string, ids spry.Identifiers, uid uuid.UUID) error {
+func (maps *InMemoryMapStore) AddId(ctx context.Context, actorType string, ids spry.Identifiers, uid uuid.UUID) error {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
 	key, _ := spry.IdentifiersToString(ids)
 	maps.IdMap[key] = uid
+	return nil
+}
+
+func (maps *InMemoryMapStore) AddLink(ctx context.Context, parentType string, parentId uuid.UUID, childType string, childId uuid.UUID) error {
+	if maps.LinkMap == nil {
+		maps.LinkMap = IdLinks{}
+	}
+	if maps.LinkMap[parentType] == nil {
+		maps.LinkMap[parentType] = map[uuid.UUID]map[string][]uuid.UUID{}
+	}
+	if maps.LinkMap[parentType][parentId] == nil {
+		maps.LinkMap[parentType][parentId] = map[string][]uuid.UUID{}
+	}
+	if maps.LinkMap[parentType][parentId][childType] == nil {
+		maps.LinkMap[parentType][parentId][childType] = []uuid.UUID{childId}
+	} else {
+		maps.LinkMap[parentType][parentId][childType] = append(maps.LinkMap[parentType][parentId][childType], childId)
+	}
 	return nil
 }
 

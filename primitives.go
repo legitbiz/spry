@@ -13,7 +13,7 @@ type Actor[T any] interface {
 }
 
 type Aggregate[T any] interface {
-	GetIdentifierSet() IdSet
+	GetIdentifierSet() IdentifierSet
 }
 
 type IdSet struct {
@@ -78,6 +78,10 @@ func CreateIdSet() IdSet {
 	return IdSet{
 		ids: IdentifierSet{},
 	}
+}
+
+func IdSetFromIdentifierSet(ids IdentifierSet) IdSet {
+	return IdSet{ids: ids}
 }
 
 type ActorMeta struct {

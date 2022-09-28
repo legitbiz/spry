@@ -33,7 +33,8 @@ type EventStore interface {
 }
 
 type MapStore interface {
-	Add(context.Context, string, spry.Identifiers, uuid.UUID) error
+	AddId(context.Context, string, spry.Identifiers, uuid.UUID) error
+	AddLink(context.Context, string, uuid.UUID, string, uuid.UUID) error
 	GetId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
 }
 
@@ -53,7 +54,7 @@ type Storage interface {
 	AddEvents(context.Context, []EventRecord) error
 	AddMap(context.Context, string, spry.Identifiers, uuid.UUID) error
 	AddSnapshot(context.Context, string, Snapshot, bool) error
-	AddLink(context.Context, uuid.UUID, uuid.UUID)
+	AddLink(context.Context, string, uuid.UUID, string, uuid.UUID) error
 	Commit(context.Context) error
 	FetchEventsSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
 	FetchId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
@@ -80,8 +81,17 @@ func (storage Stores[Tx]) AddEvents(ctx context.Context, events []EventRecord) e
 	return storage.Events.Add(ctx, events)
 }
 
+func (storage Stores[Tx]) AddLink(
+	ctx context.Context,
+	parentName string,
+	parentId uuid.UUID,
+	childName string,
+	childId uuid.UUID) error {
+	return storage.Maps.AddLink(ctx, parentName, parentId, childName, childId)
+}
+
 func (storage Stores[Tx]) AddMap(ctx context.Context, actorName string, identifiers spry.Identifiers, uid uuid.UUID) error {
-	return storage.Maps.Add(ctx, actorName, identifiers, uid)
+	return storage.Maps.AddId(ctx, actorName, identifiers, uid)
 }
 
 func (storage Stores[Tx]) AddSnapshot(ctx context.Context, actorName string, snapshot Snapshot, allowPartition bool) error {

@@ -35,8 +35,8 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_link (
     id                      uuid            PRIMARY KEY,
     parent_type             varchar(128)    NOT NULL,
     parent_id               uuid            NOT NULL,
-    child_id                uuid            NOT NULL,
     child_type              varchar(128)    NOT NULL,
+    child_id                uuid            NOT NULL,
     active                  bool            DEFAULT(true),
     starting_on             timestamp with time zone 	DEFAULT now(),
     UNIQUE(parent_id, child_id)

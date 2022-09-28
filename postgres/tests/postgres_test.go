@@ -23,7 +23,7 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 		_ = TruncateTable("player_snapshots")
 	})
 
-	repo := storage.GetRepositoryFor[tests.Player](store)
+	repo := storage.GetActorRepositoryFor[tests.Player](store)
 	results := repo.Handle(tests.CreatePlayer{Name: "Bob"})
 
 	// create player

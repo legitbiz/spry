@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"github.com/arobson/spry"
 	"testing"
 
 	"github.com/arobson/spry/memory"
@@ -9,7 +10,7 @@ import (
 
 func TestGetRepositoryFor(t *testing.T) {
 	store := memory.InMemoryStorage()
-	repo := storage.GetRepositoryFor[Player](store)
+	repo := storage.GetActorRepositoryFor[Player](store)
 	if repo.ActorName != "Player" {
 		t.Error("actor name was not the expected type")
 	}
@@ -17,7 +18,7 @@ func TestGetRepositoryFor(t *testing.T) {
 
 func TestActorHandlesCommandSuccessfully(t *testing.T) {
 	store := memory.InMemoryStorage()
-	repo := storage.GetRepositoryFor[Player](store)
+	repo := storage.GetActorRepositoryFor[Player](store)
 	results := repo.Handle(CreatePlayer{Name: "Bob"})
 
 	// create player
@@ -70,22 +71,34 @@ func TestActorHandlesCommandSuccessfully(t *testing.T) {
 
 func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
 	store := memory.InMemoryStorage()
-	motorists := storage.GetRepositoryFor[Motorist](store)
-	vehicles := storage.GetRepositoryFor[Vehicle](store)
+	motorists := storage.GetAggregateRepositoryFor[Motorist](store)
+	vehicles := storage.GetActorRepositoryFor[Vehicle](store)
+
+	m1id := MotoristId{
+		License: "008767890",
+		State:   "CA",
+	}
+
+	v1id := VehicleId{
+		VIN: "001002003",
+	}
 
 	rv1 := RegisterVehicle{
-		MotoristId: MotoristId{
-			License: "008767890",
-			State:   "CA",
-		},
-		VehicleId: VehicleId{
-			VIN: "001002003",
-		},
-		Type:  "Moped",
-		Make:  "Hyundai",
-		Model: "Scootchum",
-		Color: "Blurple",
+		MotoristId: m1id,
+		VehicleId:  v1id,
+		Type:       "Moped",
+		Make:       "Hyundai",
+		Model:      "Scootchum",
+		Color:      "Blurple",
 	}
-	r1 := motorists.Handle()
+	r1 := motorists.Handle(rv1)
+	if len(r1.Modified.Vehicles) < 1 {
+		t.Error("expected motorist to have 1 vehicle after registration")
+	}
+
+	v1, _ := vehicles.Fetch(spry.Identifiers{"VIN": v1id.VIN})
+	if v1.VIN != v1id.VIN {
+		t.Error("failed to retain VIN")
+	}
 
 }

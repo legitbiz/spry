@@ -5,6 +5,8 @@ import (
 	"errors"
 	"reflect"
 
+	"github.com/gofrs/uuid"
+
 	"github.com/arobson/spry"
 )
 
@@ -12,8 +14,22 @@ type AggregateRepository[T spry.Aggregate[T]] struct {
 	Repository[T]
 }
 
+func (repository AggregateRepository[T]) Fetch(ids spry.Identifiers) (T, error) {
+	ctx := context.Background()
+	ctx, err := repository.Storage.GetContext(ctx)
+	if err != nil {
+		return getEmpty[T](), err
+	}
+	snapshot, err := repository.fetch(ctx, ids)
+	if err != nil {
+		return getEmpty[T](), err
+	}
+	return snapshot.Data.(T), nil
+}
+
 func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Context, command spry.Command) spry.Results[T] {
-	idSet := command.(spry.Aggregate[T]).GetIdentifierSet()
+	identifiers := command.(spry.Aggregate[T]).GetIdentifierSet()
+	idSet := spry.IdSetFromIdentifierSet(identifiers)
 	aggregateId := idSet.GetIdsFor(repository.ActorName)[0]
 	baseline, err := repository.fetch(ctx, aggregateId)
 	if err != nil {
@@ -21,6 +37,8 @@ func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Cont
 			Errors: []error{err},
 		}
 	}
+
+	// fetch events for associated records
 
 	cmdRecord, s, done := repository.createCommandRecord(command, baseline)
 	if done {
@@ -41,7 +59,7 @@ func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Cont
 	}
 
 	// store id map
-	err = repository.Storage.AddMap(ctx, repository.ActorName, identifiers, snapshot.ActorId)
+	err = repository.Storage.AddMap(ctx, repository.ActorName, aggregateId, snapshot.ActorId)
 	if err != nil {
 		return spry.Results[T]{
 			Original: actor,
@@ -115,6 +133,39 @@ func (repository AggregateRepository[T]) Handle(command spry.Command) spry.Resul
 	return spry.Results[T]{
 		Errors: []error{errors.New("command must implement GetIdentifierSet")},
 	}
+}
+
+func (repository AggregateRepository[T]) createSnapshot(next T, baseline Snapshot, cmdRecord CommandRecord, events []EventRecord) (Snapshot, spry.Results[T], bool) {
+	lastEventRecord := events[len(events)-1]
+	snapshot, err := NewSnapshot(next)
+	if err != nil {
+		return Snapshot{}, spry.Results[T]{
+			Original: next,
+			Errors:   []error{err},
+		}, true
+	}
+	snapshot.ActorId = baseline.ActorId
+	snapshot.LastCommandId = cmdRecord.Id
+	snapshot.LastCommandOn = cmdRecord.HandledOn
+	snapshot.LastEventId = lastEventRecord.Id
+	snapshot.LastEventOn = lastEventRecord.CreatedOn
+	snapshot.EventsApplied += uint64(len(events))
+	snapshot.EventSinceSnapshot += len(events)
+	snapshot.Version++
+
+	for _, er := range events {
+		if er.ActorType != repository.ActorName {
+			if snapshot.LastEvents[er.ActorType] == nil {
+				snapshot.LastEvents[er.ActorType] = map[uuid.UUID]uuid.UUID{}
+			}
+			children := snapshot.LastEvents[er.ActorType]
+			if last, ok := children[er.ActorId]; !ok || (last.String() < er.Id.String()) {
+				snapshot.LastEvents[er.ActorType][er.ActorId] = last
+			}
+		}
+	}
+
+	return snapshot, spry.Results[T]{}, false
 }
 
 func GetAggregateRepositoryFor[T spry.Aggregate[T]](storage Storage) AggregateRepository[T] {

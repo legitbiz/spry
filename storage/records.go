@@ -45,6 +45,9 @@ type Snapshot struct {
 	LastEventOn time.Time `json:"lastEventOn"`
 	// the contents of the snapshot
 	Data any `json:"data"`
+	// aggregates track records and last events from each
+	// for each child type, track the last event per Identifier
+	LastEvents map[string]map[uuid.UUID]uuid.UUID
 }
 
 func (snapshot Snapshot) IsValid() bool {
@@ -60,10 +63,11 @@ func NewSnapshot(actor any) (Snapshot, error) {
 	}
 
 	return Snapshot{
-		Id:        id,
-		Type:      actorName,
-		CreatedOn: time.Now().UTC(),
-		Data:      actor,
+		Id:         id,
+		Type:       actorName,
+		CreatedOn:  time.Now().UTC(),
+		Data:       actor,
+		LastEvents: map[string]map[uuid.UUID]uuid.UUID{},
 	}, nil
 }
 

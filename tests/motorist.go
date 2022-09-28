@@ -79,7 +79,8 @@ func (vr VehicleRegistered) GetIdentifierSet() spry.IdentifierSet {
 
 func (vr VehicleRegistered) Apply(actor any) any {
 	switch a := actor.(type) {
-	case Motorist:
+	case *Motorist:
+		a.MotoristId = vr.MotoristId
 		a.Vehicles = append(a.Vehicles, vr.toVehicle())
 	}
 	return actor
@@ -101,11 +102,13 @@ func (rv RegisterVehicle) GetIdentifierSet() spry.IdentifierSet {
 	}
 }
 
-func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, error) {
+func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, []error) {
 	switch actor.(type) {
-	case *Motorist:
+	case Motorist:
 		return []spry.Event{
 			VehicleRegistered{
+				MotoristId: rv.MotoristId,
+				VehicleId:  rv.VehicleId,
 				EventMetadata: spry.EventMetadata{
 					CreatedBy:  "Motorist",
 					CreatedFor: "Vehicle",

@@ -16,7 +16,7 @@ type PostgresMapStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresMapStore) Add(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
+func (store *PostgresMapStore) AddId(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
 	query, _ := store.Templates.Execute(
 		"insert_map.sql",
 		queryData(actorName),
@@ -37,6 +37,31 @@ func (store *PostgresMapStore) Add(ctx context.Context, actorName string, ids sp
 				data,
 				uid,
 				time.Now(),
+			)
+			return err
+		},
+	)
+	return err
+}
+
+func (store *PostgresMapStore) AddLink(ctx context.Context, parentType string, parentId uuid.UUID, childType string, childId uuid.UUID) error {
+	query, _ := store.Templates.Execute(
+		"insert_link.sql",
+		queryData(parentType),
+	)
+	tx := storage.GetTx[pgx.Tx](ctx)
+	id, _ := storage.GetId()
+	err := tx.BeginFunc(
+		ctx,
+		func(t pgx.Tx) error {
+			_, err := t.Exec(
+				ctx,
+				query,
+				id,
+				parentType,
+				parentId,
+				childType,
+				childId,
 			)
 			return err
 		},
