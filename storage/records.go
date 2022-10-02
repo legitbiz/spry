@@ -16,6 +16,8 @@ func GetId() (uuid.UUID, error) {
 	return UUID, nil
 }
 
+type LastEventMap map[string]map[uuid.UUID]uuid.UUID
+
 type Snapshot struct {
 	// a generated uuid (system id) for the snapshot instance
 	Id uuid.UUID `json:"id"`
@@ -47,7 +49,7 @@ type Snapshot struct {
 	Data any `json:"data"`
 	// aggregates track records and last events from each
 	// for each child type, track the last event per Identifier
-	LastEvents map[string]map[uuid.UUID]uuid.UUID
+	LastEvents LastEventMap
 }
 
 func (snapshot Snapshot) IsValid() bool {
@@ -67,7 +69,7 @@ func NewSnapshot(actor any) (Snapshot, error) {
 		Type:       actorName,
 		CreatedOn:  time.Now().UTC(),
 		Data:       actor,
-		LastEvents: map[string]map[uuid.UUID]uuid.UUID{},
+		LastEvents: LastEventMap{},
 	}, nil
 }
 

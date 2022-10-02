@@ -20,7 +20,7 @@ func (repository AggregateRepository[T]) Fetch(ids spry.Identifiers) (T, error) 
 	if err != nil {
 		return getEmpty[T](), err
 	}
-	snapshot, err := repository.fetch(ctx, ids)
+	snapshot, err := repository.fetchAggregate(ctx, ids)
 	if err != nil {
 		return getEmpty[T](), err
 	}
@@ -31,7 +31,7 @@ func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Cont
 	identifiers := command.(spry.Aggregate[T]).GetIdentifierSet()
 	idSet := spry.IdSetFromIdentifierSet(identifiers)
 	aggregateId := idSet.GetIdsFor(repository.ActorName)[0]
-	baseline, err := repository.fetch(ctx, aggregateId)
+	baseline, err := repository.fetchAggregate(ctx, aggregateId)
 	if err != nil {
 		return spry.Results[T]{
 			Errors: []error{err},

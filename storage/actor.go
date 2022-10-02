@@ -18,7 +18,7 @@ func (repository ActorRepository[T]) Fetch(ids spry.Identifiers) (T, error) {
 	if err != nil {
 		return getEmpty[T](), err
 	}
-	snapshot, err := repository.fetch(ctx, ids)
+	snapshot, err := repository.fetchActor(ctx, ids)
 	if err != nil {
 		return getEmpty[T](), err
 	}
@@ -27,7 +27,7 @@ func (repository ActorRepository[T]) Fetch(ids spry.Identifiers) (T, error) {
 
 func (repository ActorRepository[T]) handleActorCommand(ctx context.Context, command spry.Command) spry.Results[T] {
 	identifiers := command.(spry.Actor[T]).GetIdentifiers()
-	baseline, err := repository.fetch(ctx, identifiers)
+	baseline, err := repository.fetchActor(ctx, identifiers)
 	if err != nil {
 		return spry.Results[T]{
 			Errors: []error{err},

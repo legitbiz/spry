@@ -72,7 +72,7 @@ func (repository Repository[T]) createEventRecords(events []spry.Event, baseline
 	return eventRecords, spry.Results[T]{}, false
 }
 
-func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers) (Snapshot, error) {
+func (repository Repository[T]) fetchActor(ctx context.Context, ids spry.Identifiers) (Snapshot, error) {
 
 	// get the latest snapshot or initialize and empty
 	snapshot, actorId, err := repository.getLatestSnapshot(ctx, ids)
@@ -90,37 +90,39 @@ func (repository Repository[T]) fetch(ctx context.Context, ids spry.Identifiers)
 	repository.updateActor(events, records, &snapshot)
 
 	// write snapshot
-	repository.writeSnapshot(ctx, len(events), snapshot)
-	return snapshot, nil
+	err = repository.writeSnapshot(ctx, len(events), snapshot)
+	return snapshot, err
 }
 
-func (repository Repository[T]) getEventsSince(ctx context.Context, actorId uuid.UUID, snapshot Snapshot) ([]spry.Event, []EventRecord, error) {
-	records := []EventRecord{}
-	var err error
-	if actorId != uuid.Nil {
-		records, err = repository.Storage.FetchEventsSince(
-			ctx,
-			repository.ActorName,
-			actorId,
-			snapshot.LastEventId,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
+func (repository Repository[T]) fetchAggregate(ctx context.Context, ids spry.Identifiers) (Snapshot, error) {
+
+	// get the latest snapshot or initialize and empty
+	snapshot, actorId, err := repository.getLatestSnapshot(ctx, ids)
+	if err != nil {
+		return snapshot, err
 	}
 
-	eventCount := len(records)
-	events := make([]spry.Event, eventCount)
-	for i, record := range records {
-		events[i] = record.Data.(spry.Event)
+	// check for all events since the latest snapshot
+	events, records, err := repository.getAggregatedEventsSince(ctx, actorId, snapshot)
+	if err != nil {
+		return snapshot, err
 	}
-	return events, records, nil
+
+	// apply events to actor instance
+	repository.updateActor(events, records, &snapshot)
+
+	// write snapshot
+	err = repository.writeSnapshot(ctx, len(events), snapshot)
+	return snapshot, err
 }
 
 func (repository Repository[T]) getLatestSnapshot(ctx context.Context, ids spry.Identifiers) (Snapshot, uuid.UUID, error) {
 	// create an empty actor instance and empty snapshot
 	empty := getEmpty[T]()
-	snapshot, _ := NewSnapshot(empty)
+	snapshot, err := NewSnapshot(empty)
+	if err != nil {
+		return snapshot, uuid.Nil, err
+	}
 
 	// fetch the actor id from the identifier
 	actorId, err := repository.Storage.FetchId(ctx, repository.ActorName, ids)
@@ -148,6 +150,59 @@ func (repository Repository[T]) getLatestSnapshot(ctx context.Context, ids spry.
 	return snapshot, actorId, nil
 }
 
+func (repository Repository[T]) getEventsSince(ctx context.Context, actorId uuid.UUID, snapshot Snapshot) ([]spry.Event, []EventRecord, error) {
+	records := []EventRecord{}
+	var err error
+	if actorId != uuid.Nil {
+		records, err = repository.Storage.FetchEventsSince(
+			ctx,
+			repository.ActorName,
+			actorId,
+			snapshot.LastEventId,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	eventCount := len(records)
+	events := make([]spry.Event, eventCount)
+	for i, record := range records {
+		events[i] = record.Data.(spry.Event)
+	}
+	return events, records, nil
+}
+
+func (repository Repository[T]) getAggregatedEventsSince(ctx context.Context, aggregateId uuid.UUID, snapshot Snapshot) ([]spry.Event, []EventRecord, error) {
+	var err error
+
+	// get id map from map store
+	if aggregateId != uuid.Nil {
+		return nil, nil, err
+	}
+
+	idMap, err := repository.Storage.FetchIdMap(ctx, repository.ActorName, aggregateId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	records, err := repository.Storage.FetchAggregatedEventsSince(
+		ctx,
+		idMap,
+		snapshot.LastEventId,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	eventCount := len(records)
+	events := make([]spry.Event, eventCount)
+	for i, record := range records {
+		events[i] = record.Data.(spry.Event)
+	}
+	return events, records, nil
+}
+
 func (repository Repository[T]) updateActor(events []spry.Event, records []EventRecord, snapshot *Snapshot) {
 	actor := snapshot.Data.(T)
 	next := repository.Apply(events, actor)
@@ -166,19 +221,22 @@ func (repository Repository[T]) updateActor(events []spry.Event, records []Event
 	}
 }
 
-func (repository Repository[T]) writeSnapshot(ctx context.Context, eventCount int, snapshot Snapshot) {
+func (repository Repository[T]) writeSnapshot(ctx context.Context, eventCount int, snapshot Snapshot) error {
 	config := spry.GetActorMeta[T]()
 	// do we allow snapshotting during read?
 	// if so, have we passed the event threshold?
+	var err error = nil
 	if config.SnapshotDuringRead &&
 		eventCount > config.SnapshotFrequency {
 		snapshot.EventSinceSnapshot = 0
 		// ignore any error creating snapshots during read
-		_ = repository.Storage.AddSnapshot(
+		err = repository.Storage.AddSnapshot(
 			ctx,
 			repository.ActorName,
 			snapshot,
 			config.SnapshotDuringPartition,
 		)
 	}
+
+	return err
 }

@@ -2,11 +2,21 @@ package spry
 
 import (
 	"encoding/json"
+
+	"github.com/gofrs/uuid"
 )
 
 type Identifiers = map[string]any
 
 type IdentifierSet = map[string][]Identifiers
+
+type AggregatedIds = map[string][]uuid.UUID
+
+type AggregateIdMap = struct {
+	ActorName  string
+	ActorId    uuid.UUID
+	Aggregated AggregatedIds
+}
 
 type Actor[T any] interface {
 	GetIdentifiers() Identifiers
@@ -72,6 +82,14 @@ func (set *IdSet) RemoveIdsFrom(actorType string, ids ...Identifiers) bool {
 
 func (set *IdSet) ToIdentifierSet() IdentifierSet {
 	return set.ids
+}
+
+func CreateAggregateIdMap(actorName string, actorId uuid.UUID, ids AggregatedIds) AggregateIdMap {
+	return AggregateIdMap{
+		ActorName:  actorName,
+		ActorId:    actorId,
+		Aggregated: ids,
+	}
 }
 
 func CreateIdSet() IdSet {
