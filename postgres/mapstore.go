@@ -98,3 +98,34 @@ func (store *PostgresMapStore) GetId(ctx context.Context, actorName string, ids 
 	}
 	return uid, nil
 }
+
+func (maps *InMemoryMapStore) GetIdMap(ctx context.Context, actorType string, uid uuid.UUID) (spry.AggregateIdMap, error) {
+	query, _ := store.Templates.Execute(
+		"select_links_for_actor.sql",
+		queryData(actorName),
+	)
+
+	empty := spry.emptyAggregateIdMap()
+	tx := storage.GetTx[pgx.Tx](ctx)
+	rows, err := tx.Query(
+		ctx,
+		query,
+		actorType,
+		uid,
+	)
+	if err != nil {
+		return empty, err
+	}
+	defer rows.Close()
+	uid := uuid.Nil
+	idMap := spry.CreateAggregateIdMap(actorType, uid)
+	if rows.Next() {
+		err = rows.Scan(nil, nil, &child, &id)
+		if err != nil {
+			return empty, err
+		}
+		idMap.AddIdsFor(child, id)
+	}
+
+	return idMap, nil
+}

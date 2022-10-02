@@ -43,6 +43,15 @@ func (store *PostgresEventStore) Add(ctx context.Context, events []storage.Event
 	return err
 }
 
+func (store *InMemoryEventStore) FetchAggregatedSince(
+	ctx context.Context,
+	ids spry.AggregateIdMap,
+	eventUUID uuid.UUID,
+	types storage.TypeMap) ([]storage.EventRecord, error) {
+
+	return []storage.EventRecord, nil
+}
+
 func (store *PostgresEventStore) FetchSince(
 	ctx context.Context,
 	actorName string,

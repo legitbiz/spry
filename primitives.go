@@ -12,10 +12,19 @@ type IdentifierSet = map[string][]Identifiers
 
 type AggregatedIds = map[string][]uuid.UUID
 
-type AggregateIdMap = struct {
+type AggregateIdMap struct {
 	ActorName  string
 	ActorId    uuid.UUID
 	Aggregated AggregatedIds
+}
+
+func (idMap *AggregateIdMap) AddIdsFor(child string, id ...uuid.UUID) {
+	ids := idMap.Aggregated
+	if list, ok := ids[child]; ok {
+		ids[child] = append(list, id...)
+	} else {
+		ids[child] = id
+	}
 }
 
 type Actor[T any] interface {
@@ -84,12 +93,16 @@ func (set *IdSet) ToIdentifierSet() IdentifierSet {
 	return set.ids
 }
 
-func CreateAggregateIdMap(actorName string, actorId uuid.UUID, ids AggregatedIds) AggregateIdMap {
+func CreateAggregateIdMap(actorName string, actorId uuid.UUID) AggregateIdMap {
 	return AggregateIdMap{
 		ActorName:  actorName,
 		ActorId:    actorId,
-		Aggregated: ids,
+		Aggregated: AggregatedIds{},
 	}
+}
+
+func emptyAggregateIdMap() AggregateIdMap {
+	return AggregateIdMap{}
 }
 
 func CreateIdSet() IdSet {

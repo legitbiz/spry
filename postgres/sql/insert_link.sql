@@ -1,4 +1,4 @@
-INSERT INTO {{.ActorName}}_link (
+INSERT INTO {{.ActorName}}_links (
     id,
     parent_type,
     parent_id,

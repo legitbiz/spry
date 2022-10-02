@@ -152,13 +152,14 @@ func (maps *InMemoryMapStore) GetIdMap(ctx context.Context, actorType string, ui
 		aggregates = map[uuid.UUID]spry.AggregatedIds{}
 		maps.LinkMap[actorType] = aggregates
 	}
-	var actors spry.AggregatedIds
-	if actors, ok = aggregates[uid]; !ok {
-		actors = spry.AggregatedIds{}
-		maps.LinkMap[actorType][uid] = actors
+
+	idMap := spry.CreateAggregateIdMap(actorType, uid)
+	if actors, ok := aggregates[uid]; ok {
+		for k, v := range actors {
+			idMap.AddIdsFor(k, v...)
+		}
 	}
 
-	idMap := spry.CreateAggregateIdMap(actorType, uid, actors)
 	return idMap, nil
 }
 

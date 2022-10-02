@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_id_map (
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_id_map_actor_idx on {{.ActorName}}_id_map(actor_id);
 CREATE INDEX IF NOT EXISTS {{.ActorName}}_id_map_ids_idx on {{.ActorName}}_id_map(identifiers);
 
-CREATE TABLE IF NOT EXISTS {{.ActorName}}_link (
+CREATE TABLE IF NOT EXISTS {{.ActorName}}_links (
     id                      uuid            PRIMARY KEY,
     parent_type             varchar(128)    NOT NULL,
     parent_id               uuid            NOT NULL,
