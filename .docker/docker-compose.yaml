@@ -1,9 +1,7 @@
 version: "2"
 services:
   postgres:
-    build:
-      context: ./
-      dockerfile: Dockerfile.pg
+    image: postgres:14.5-alpine
     container_name: sprydb
     restart: always
     environment:
@@ -15,7 +13,7 @@ services:
     ports:
       - 5540:5432
     volumes:
-      - ./volumes/postgres/data:/var/lib/postgresql/data/pgdata
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: pgadmin
