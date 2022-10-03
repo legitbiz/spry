@@ -43,7 +43,7 @@ func (repository Repository[T]) createCommandRecord(command spry.Command, baseli
 	return cmdRecord, spry.Results[T]{}, false
 }
 
-func (repository Repository[T]) createEventRecords(events []spry.Event, baseline Snapshot, cmdRecord CommandRecord) ([]EventRecord, spry.Results[T], bool) {
+func (repository Repository[T]) createEventRecords(events []spry.Event, baseline Snapshot, cmdRecord CommandRecord, assignments IdAssignments) ([]EventRecord, spry.Results[T], bool) {
 	eventRecords := make([]EventRecord, len(events))
 	for i, event := range events {
 		record, err := NewEventRecord(event)
@@ -54,13 +54,27 @@ func (repository Repository[T]) createEventRecords(events []spry.Event, baseline
 			}, true
 		}
 
-		record.ActorId = baseline.ActorId
-		if record.ActorName == "" {
-			record.ActorName = repository.ActorName
+		eventMeta := spry.GetEventMeta(event)
+
+		if eventMeta.CreatedFor != "" {
+			child := eventMeta.CreatedFor
+			record.ActorName = child
+			record.CreatedBy = eventMeta.CreatedBy
+
+			identifiers := event.(spry.Aggregate[T]).GetIdentifierSet()
+			idSet := spry.IdSetFromIdentifierSet(identifiers)
+			childIds := idSet.GetIdsFor(child)[0]
+			record.ActorId = assignments.GetIdFor(child, childIds)
+		} else {
+			if record.ActorName == "" {
+				record.ActorName = repository.ActorName
+			}
+			if record.CreatedBy == "" {
+				record.CreatedBy = repository.ActorName
+			}
+			record.ActorId = baseline.ActorId
 		}
-		if record.CreatedBy == "" {
-			record.CreatedBy = repository.ActorName
-		}
+
 		record.CreatedById = baseline.ActorId
 		record.CreatedByVersion = baseline.Version
 		record.CreatedOn = time.Now()
@@ -121,19 +135,19 @@ func (repository Repository[T]) getAssignedId(
 	for _, ids := range list {
 		id, err := repository.Storage.FetchId(ctx, name, ids)
 		if err == nil && id == uuid.Nil {
-			id, _ := GetId()
-			err = repository.Storage.AddMap(ctx, name, ids, id)
+			id, _ = GetId()
+		}
+		err = repository.Storage.AddMap(ctx, name, ids, id)
+		if err != nil {
+			return aig
+		}
+		if name != repository.ActorName {
+			err = repository.Storage.AddLink(ctx, repository.ActorName, aggregateId, name, id)
 			if err != nil {
 				return aig
 			}
-			if name != repository.ActorName {
-				err = repository.Storage.AddLink(ctx, repository.ActorName, aggregateId, name, id)
-				if err != nil {
-					return aig
-				}
-			} else {
-				aig = id
-			}
+		} else {
+			aig = id
 		}
 		assignments.AddAssignment(name, ids, id)
 	}

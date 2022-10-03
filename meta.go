@@ -42,6 +42,14 @@ func (e EventMetadata) GetEventMeta() EventMetadata {
 	return e
 }
 
+func GetEventMeta(event any) EventMetadata {
+	hasMeta, ok := event.(Namespaced)
+	if ok {
+		return hasMeta.GetEventMeta()
+	}
+	return EventMetadata{}
+}
+
 type Namespaced interface {
 	GetEventMeta() EventMetadata
 }

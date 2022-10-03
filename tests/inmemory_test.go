@@ -1,8 +1,9 @@
 package tests
 
 import (
-	"github.com/arobson/spry"
 	"testing"
+
+	"github.com/arobson/spry"
 
 	"github.com/arobson/spry/memory"
 	"github.com/arobson/spry/storage"
@@ -101,4 +102,16 @@ func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
 		t.Error("failed to retain VIN")
 	}
 
+	m1, _ := motorists.Fetch(spry.Identifiers{"License": "008767890", "State": "CA"})
+	mv1 := m1.Vehicles[0]
+	if m1.License != m1id.License ||
+		m1.State != m1id.State ||
+		len(m1.Vehicles) != 1 ||
+		mv1.Color != rv1.Color ||
+		mv1.Make != rv1.Make ||
+		mv1.Model != rv1.Model ||
+		mv1.Type != rv1.Type ||
+		mv1.VIN != rv1.VIN {
+		t.Error("failed to rehydrate motorist correctly")
+	}
 }

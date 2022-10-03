@@ -102,7 +102,7 @@ func (repository Repository[T]) getAggregatedEventsSince(ctx context.Context, ag
 	var err error
 
 	// get id map from map store
-	if aggregateId != uuid.Nil {
+	if aggregateId == uuid.Nil {
 		return nil, nil, err
 	}
 
@@ -161,7 +161,7 @@ func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Cont
 	actor := baseline.Data.(T)
 	events, errors := command.Handle(actor)
 	next := repository.Apply(events, actor)
-	eventRecords, s, done := repository.createEventRecords(events, baseline, cmdRecord)
+	eventRecords, s, done := repository.createEventRecords(events, baseline, cmdRecord, assignments)
 	if done {
 		return s
 	}

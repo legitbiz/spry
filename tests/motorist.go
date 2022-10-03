@@ -70,6 +70,14 @@ func (vr VehicleRegistered) toVehicle() Vehicle {
 	}
 }
 
+func (vr VehicleRegistered) updateVehicle(v *Vehicle) {
+	v.Color = vr.Color
+	v.Model = vr.Model
+	v.Make = vr.Make
+	v.Type = vr.Type
+	v.VehicleId = vr.VehicleId
+}
+
 func (vr VehicleRegistered) GetIdentifierSet() spry.IdentifierSet {
 	return spry.IdentifierSet{
 		"Motorist": []spry.Identifiers{vr.getIdentifiers()},
@@ -82,6 +90,8 @@ func (vr VehicleRegistered) Apply(actor any) any {
 	case *Motorist:
 		a.MotoristId = vr.MotoristId
 		a.Vehicles = append(a.Vehicles, vr.toVehicle())
+	case *Vehicle:
+		vr.updateVehicle(a)
 	}
 	return actor
 }

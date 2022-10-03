@@ -42,7 +42,7 @@ func (repository ActorRepository[T]) handleActorCommand(ctx context.Context, com
 	actor := baseline.Data.(T)
 	events, errors := command.Handle(actor)
 	next := repository.Apply(events, actor)
-	eventRecords, s, done := repository.createEventRecords(events, baseline, cmdRecord)
+	eventRecords, s, done := repository.createEventRecords(events, baseline, cmdRecord, IdAssignments{})
 	if done {
 		return s
 	}
