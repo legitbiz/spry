@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/arobson/spry"
 	"github.com/arobson/spry/postgres"
 	"github.com/arobson/spry/storage"
 	"github.com/arobson/spry/tests"
@@ -71,5 +72,54 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 	}
 	if results3.Modified.Name != "Bob" {
 		t.Error("incorrect creation of new actor occurred")
+	}
+}
+
+func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
+	store := postgres.CreatePostgresStorage(CONNECTION_STRING)
+	store.RegisterPrimitives(
+		tests.VehicleRegistered{},
+	)
+	motorists := storage.GetAggregateRepositoryFor[tests.Motorist](store)
+	vehicles := storage.GetActorRepositoryFor[tests.Vehicle](store)
+
+	m1id := tests.MotoristId{
+		License: "008767890",
+		State:   "CA",
+	}
+
+	v1id := tests.VehicleId{
+		VIN: "001002003",
+	}
+
+	rv1 := tests.RegisterVehicle{
+		MotoristId: m1id,
+		VehicleId:  v1id,
+		Type:       "Moped",
+		Make:       "Hyundai",
+		Model:      "Scootchum",
+		Color:      "Blurple",
+	}
+	r1 := motorists.Handle(rv1)
+	if len(r1.Modified.Vehicles) < 1 {
+		t.Error("expected motorist to have 1 vehicle after registration")
+	}
+
+	v1, _ := vehicles.Fetch(spry.Identifiers{"VIN": v1id.VIN})
+	if v1.VIN != v1id.VIN {
+		t.Error("failed to retain VIN")
+	}
+
+	m1, _ := motorists.Fetch(spry.Identifiers{"License": "008767890", "State": "CA"})
+	mv1 := m1.Vehicles[0]
+	if m1.License != m1id.License ||
+		m1.State != m1id.State ||
+		len(m1.Vehicles) != 1 ||
+		mv1.Color != rv1.Color ||
+		mv1.Make != rv1.Make ||
+		mv1.Model != rv1.Model ||
+		mv1.Type != rv1.Type ||
+		mv1.VIN != rv1.VIN {
+		t.Error("failed to rehydrate motorist correctly")
 	}
 }

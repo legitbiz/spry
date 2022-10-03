@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"sort"
 
 	"github.com/arobson/spry"
 	"github.com/arobson/spry/storage"
@@ -51,7 +52,28 @@ func (store *PostgresEventStore) FetchAggregatedSince(
 	idMap storage.LastEventMap,
 	types storage.TypeMap) ([]storage.EventRecord, error) {
 
-	return []storage.EventRecord{}, nil
+	var records []storage.EventRecord
+	own, err := store.FetchSince(ctx, actorName, actorId, eventUUID, types)
+	if err != nil {
+		return nil, err
+	}
+	records = append(records, own...)
+
+	for childName, childMap := range idMap.LastEvents {
+		for id, last := range childMap {
+			list, err := store.FetchSince(ctx, childName, id, last, types)
+			if err != nil {
+				return nil, err
+			}
+			records = append(records, list...)
+		}
+	}
+
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].Id.String() < records[j].Id.String()
+	})
+
+	return records, nil
 }
 
 func (store *PostgresEventStore) FetchSince(

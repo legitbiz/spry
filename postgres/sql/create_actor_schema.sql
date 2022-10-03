@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS {{.ActorName}}_links (
     UNIQUE(parent_id, child_id)
 );
 
-CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_parent_idx on {{.ActorName}}_link(parent_id);
-CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_child_idx on {{.ActorName}}_link(child_id);
+CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_parent_idx on {{.ActorName}}_links(parent_id);
+CREATE INDEX IF NOT EXISTS {{.ActorName}}_link_child_idx on {{.ActorName}}_links(child_id);
 
 CREATE TABLE IF NOT EXISTS {{.ActorName}}_snapshots (
 	id								uuid	        PRIMARY KEY,
