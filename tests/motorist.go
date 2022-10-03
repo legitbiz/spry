@@ -6,7 +6,7 @@ import (
 )
 
 type VehicleId struct {
-	VIN string
+	VIN string `json:"VIN"`
 }
 
 func (v VehicleId) GetIdentifiers() spry.Identifiers {
@@ -14,11 +14,11 @@ func (v VehicleId) GetIdentifiers() spry.Identifiers {
 }
 
 type Vehicle struct {
-	VehicleId
-	Type  string
-	Make  string
-	Model string
-	Color string
+	VehicleId `mapstructure:",squash"`
+	Type      string
+	Make      string
+	Model     string
+	Color     string
 }
 
 func (v Vehicle) GetIdentifiers() spry.Identifiers {
@@ -26,14 +26,14 @@ func (v Vehicle) GetIdentifiers() spry.Identifiers {
 }
 
 type Motorist struct {
-	MotoristId
-	Name     string
-	Vehicles []Vehicle
+	MotoristId `mapstructure:",squash"`
+	Name       string
+	Vehicles   []Vehicle
 }
 
 type MotoristId struct {
-	License string
-	State   string
+	License string `json:"License"`
+	State   string `json:"State"`
 }
 
 func (m MotoristId) getIdentifiers() spry.Identifiers {
@@ -51,13 +51,13 @@ func (m Motorist) GetIdentifierSet() spry.IdentifierSet {
 }
 
 type VehicleRegistered struct {
-	spry.EventMetadata
-	MotoristId
-	VehicleId
-	Type  string
-	Make  string
-	Model string
-	Color string
+	spry.EventMetadata `mapstructure:",squash"`
+	MotoristId         `mapstructure:",squash"`
+	VehicleId          `mapstructure:",squash"`
+	Type               string
+	Make               string
+	Model              string
+	Color              string
 }
 
 func (vr VehicleRegistered) toVehicle() Vehicle {

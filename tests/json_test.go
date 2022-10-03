@@ -6,6 +6,7 @@ import (
 
 	"github.com/arobson/spry"
 	"github.com/arobson/spry/storage"
+	"github.com/mitchellh/mapstructure"
 )
 
 func TestEventRecordSerialization(t *testing.T) {
@@ -39,5 +40,39 @@ func TestEventRecordSerialization(t *testing.T) {
 		record.CreatedBy != "Test" ||
 		record.CreatedById != uid {
 		t.Fatal("deserialization created invalid object", err)
+	}
+}
+
+func TestEmbeddedSerialization(t *testing.T) {
+	vr1 := VehicleRegistered{
+		MotoristId: MotoristId{License: "123", State: "AK"},
+		VehicleId:  VehicleId{VIN: "000000001"},
+		Type:       "scooter",
+		Make:       "gogeddums",
+		Model:      "scootchies",
+		Color:      "arglebargle",
+	}
+	json, err := spry.ToJson(vr1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tmp, err := spry.FromJson[any](json)
+
+	var vr2 VehicleRegistered
+	mapstructure.Decode(tmp, &vr2)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if vr2.License != vr1.License ||
+		vr2.State != vr1.State ||
+		vr2.VIN != vr1.VIN ||
+		vr2.Color != vr1.Color ||
+		vr2.Make != vr1.Make ||
+		vr2.Model != vr1.Model ||
+		vr2.Type != vr1.Type {
+		t.Error("embedded fields are not correctly preserved during JSON serialization")
 	}
 }
