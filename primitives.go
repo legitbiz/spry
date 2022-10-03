@@ -2,30 +2,11 @@ package spry
 
 import (
 	"encoding/json"
-
-	"github.com/gofrs/uuid"
 )
 
 type Identifiers = map[string]any
 
 type IdentifierSet = map[string][]Identifiers
-
-type AggregatedIds = map[string][]uuid.UUID
-
-type AggregateIdMap struct {
-	ActorName  string
-	ActorId    uuid.UUID
-	Aggregated AggregatedIds
-}
-
-func (idMap *AggregateIdMap) AddIdsFor(child string, id ...uuid.UUID) {
-	ids := idMap.Aggregated
-	if list, ok := ids[child]; ok {
-		ids[child] = append(list, id...)
-	} else {
-		ids[child] = id
-	}
-}
 
 type Actor[T any] interface {
 	GetIdentifiers() Identifiers
@@ -39,8 +20,8 @@ type IdSet struct {
 	ids IdentifierSet
 }
 
-func (set *IdSet) AddIdsFor(actorType string, ids ...Identifiers) {
-	list, ok := set.ids[actorType]
+func (set *IdSet) AddIdsFor(actorName string, ids ...Identifiers) {
+	list, ok := set.ids[actorName]
 	if !ok {
 		list = make([]Identifiers, len(ids))
 	}
@@ -51,19 +32,18 @@ func (set *IdSet) AddIdsFor(actorType string, ids ...Identifiers) {
 			list = append(list, id)
 		}
 	}
-	set.ids[actorType] = list
+	set.ids[actorName] = list
 }
 
-func (set *IdSet) GetIdsFor(actorType string) []Identifiers {
-	list, ok := set.ids[actorType]
-	if ok {
+func (set *IdSet) GetIdsFor(actorName string) []Identifiers {
+	if list, ok := set.ids[actorName]; ok {
 		return list
 	}
 	return []Identifiers{}
 }
 
-func (set *IdSet) RemoveIdsFrom(actorType string, ids ...Identifiers) bool {
-	list, ok := set.ids[actorType]
+func (set *IdSet) RemoveIdsFrom(actorName string, ids ...Identifiers) bool {
+	list, ok := set.ids[actorName]
 	lookup := map[string]int{}
 	for i, id := range list {
 		s, _ := IdentifiersToString(id)
@@ -83,7 +63,7 @@ func (set *IdSet) RemoveIdsFrom(actorType string, ids ...Identifiers) bool {
 			list[len(list)-1] = nil
 			list = list[:len(list)-1]
 		}
-		set.ids[actorType] = list
+		set.ids[actorName] = list
 		return true
 	}
 	return false
@@ -91,18 +71,6 @@ func (set *IdSet) RemoveIdsFrom(actorType string, ids ...Identifiers) bool {
 
 func (set *IdSet) ToIdentifierSet() IdentifierSet {
 	return set.ids
-}
-
-func CreateAggregateIdMap(actorName string, actorId uuid.UUID) AggregateIdMap {
-	return AggregateIdMap{
-		ActorName:  actorName,
-		ActorId:    actorId,
-		Aggregated: AggregatedIds{},
-	}
-}
-
-func emptyAggregateIdMap() AggregateIdMap {
-	return AggregateIdMap{}
 }
 
 func CreateIdSet() IdSet {
@@ -115,41 +83,8 @@ func IdSetFromIdentifierSet(ids IdentifierSet) IdSet {
 	return IdSet{ids: ids}
 }
 
-type ActorMeta struct {
-	// how many events should occur before the next snapshot
-	SnapshotFrequency int
-	// controls whether snapshots occur during fetch (read)
-	SnapshotDuringRead bool
-	// controls whether snapshots occur during handle (write)
-	SnapshotDuringWrite bool
-	// controls whether snapshots can occur during partitions
-	// requires a storage adapter for a database that can
-	// detect this
-	SnapshotDuringPartition bool
-}
-
-type HasMeta interface {
-	GetActorMeta() ActorMeta
-}
-
-var default_meta = ActorMeta{
-	SnapshotFrequency:       20,
-	SnapshotDuringRead:      false,
-	SnapshotDuringWrite:     true,
-	SnapshotDuringPartition: true,
-}
-
 func getEmpty[T any]() T {
 	return *new(T)
-}
-
-func GetActorMeta[T any]() ActorMeta {
-	var empty any = getEmpty[T]()
-	hasMeta, ok := empty.(HasMeta)
-	if ok {
-		return hasMeta.GetActorMeta()
-	}
-	return default_meta
 }
 
 type Command interface {
@@ -158,19 +93,6 @@ type Command interface {
 
 type Event interface {
 	Apply(any) any
-}
-
-type EventMetadata struct {
-	CreatedBy  string
-	CreatedFor string
-}
-
-func (e EventMetadata) GetEventMeta() EventMetadata {
-	return e
-}
-
-type Namespaced interface {
-	GetEventMeta() EventMetadata
 }
 
 type Repository[T Actor[T]] interface {

@@ -55,8 +55,8 @@ func (repository Repository[T]) createEventRecords(events []spry.Event, baseline
 		}
 
 		record.ActorId = baseline.ActorId
-		if record.ActorType == "" {
-			record.ActorType = repository.ActorName
+		if record.ActorName == "" {
+			record.ActorName = repository.ActorName
 		}
 		if record.CreatedBy == "" {
 			record.CreatedBy = repository.ActorName
@@ -94,60 +94,50 @@ func (repository Repository[T]) fetchActor(ctx context.Context, ids spry.Identif
 	return snapshot, err
 }
 
-func (repository Repository[T]) fetchAggregate(ctx context.Context, ids spry.Identifiers) (Snapshot, error) {
+func (repository Repository[T]) getAssignedIds(ctx context.Context, idSet spry.IdentifierSet) (IdAssignments, error) {
+	assignments := NewAssignments(repository.ActorName)
+	aggregateId := uuid.Nil
 
-	// get the latest snapshot or initialize and empty
-	snapshot, actorId, err := repository.getLatestSnapshot(ctx, ids)
-	if err != nil {
-		return snapshot, err
+	// the aggregate needs to go first to get the root id
+	root := repository.ActorName
+	aggregateId = repository.getAssignedId(ctx, aggregateId, root, idSet[root], &assignments)
+
+	for name, list := range idSet {
+		if name != root {
+			repository.getAssignedId(ctx, aggregateId, name, list, &assignments)
+		}
 	}
-
-	// check for all events since the latest snapshot
-	events, records, err := repository.getAggregatedEventsSince(ctx, actorId, snapshot)
-	if err != nil {
-		return snapshot, err
-	}
-
-	// apply events to actor instance
-	repository.updateActor(events, records, &snapshot)
-
-	// write snapshot
-	err = repository.writeSnapshot(ctx, len(events), snapshot)
-	return snapshot, err
+	return assignments, nil
 }
 
-func (repository Repository[T]) getLatestSnapshot(ctx context.Context, ids spry.Identifiers) (Snapshot, uuid.UUID, error) {
-	// create an empty actor instance and empty snapshot
-	empty := getEmpty[T]()
-	snapshot, err := NewSnapshot(empty)
-	if err != nil {
-		return snapshot, uuid.Nil, err
-	}
+func (repository Repository[T]) getAssignedId(
+	ctx context.Context,
+	aggregateId uuid.UUID,
+	name string,
+	list []spry.Identifiers,
+	assignments *IdAssignments) uuid.UUID {
 
-	// fetch the actor id from the identifier
-	actorId, err := repository.Storage.FetchId(ctx, repository.ActorName, ids)
-	if err != nil {
-		return snapshot, actorId, err
+	aig := aggregateId
+	for _, ids := range list {
+		id, err := repository.Storage.FetchId(ctx, name, ids)
+		if err == nil && id == uuid.Nil {
+			id, _ := GetId()
+			err = repository.Storage.AddMap(ctx, name, ids, id)
+			if err != nil {
+				return aig
+			}
+			if name != repository.ActorName {
+				err = repository.Storage.AddLink(ctx, repository.ActorName, aggregateId, name, id)
+				if err != nil {
+					return aig
+				}
+			} else {
+				aig = id
+			}
+		}
+		assignments.AddAssignment(name, ids, id)
 	}
-
-	// fetch the latest snapshot from storage or return empty
-	if actorId != uuid.Nil {
-		latest, err := repository.Storage.FetchLatestSnapshot(ctx, repository.ActorName, actorId)
-		if err != nil {
-			return snapshot, actorId, err
-		}
-		if latest.IsValid() {
-			snapshot = latest
-		} else {
-			snapshot.ActorId = actorId
-		}
-	} else {
-		snapshot.ActorId, err = GetId()
-		if err != nil {
-			return snapshot, actorId, err
-		}
-	}
-	return snapshot, actorId, nil
+	return aig
 }
 
 func (repository Repository[T]) getEventsSince(ctx context.Context, actorId uuid.UUID, snapshot Snapshot) ([]spry.Event, []EventRecord, error) {
@@ -173,34 +163,51 @@ func (repository Repository[T]) getEventsSince(ctx context.Context, actorId uuid
 	return events, records, nil
 }
 
-func (repository Repository[T]) getAggregatedEventsSince(ctx context.Context, aggregateId uuid.UUID, snapshot Snapshot) ([]spry.Event, []EventRecord, error) {
-	var err error
-
-	// get id map from map store
-	if aggregateId != uuid.Nil {
-		return nil, nil, err
-	}
-
-	idMap, err := repository.Storage.FetchIdMap(ctx, repository.ActorName, aggregateId)
+func (repository Repository[T]) getLatestSnapshot(ctx context.Context, ids spry.Identifiers) (Snapshot, uuid.UUID, error) {
+	// create an empty actor instance and empty snapshot
+	empty := getEmpty[T]()
+	snapshot, err := NewSnapshot(empty)
 	if err != nil {
-		return nil, nil, err
+		return snapshot, uuid.Nil, err
 	}
 
-	records, err := repository.Storage.FetchAggregatedEventsSince(
-		ctx,
-		idMap,
-		snapshot.LastEventId,
-	)
+	// fetch the actor id from the identifier
+	actorId, err := repository.Storage.FetchId(ctx, repository.ActorName, ids)
 	if err != nil {
-		return nil, nil, err
+		return snapshot, actorId, err
 	}
 
-	eventCount := len(records)
-	events := make([]spry.Event, eventCount)
-	for i, record := range records {
-		events[i] = record.Data.(spry.Event)
+	// fetch the latest snapshot from storage or return empty
+	snapshot, err = repository.getLatestSnapshotByUUID(ctx, actorId)
+	return snapshot, snapshot.ActorId, err
+}
+
+func (repository Repository[T]) getLatestSnapshotByUUID(ctx context.Context, uid uuid.UUID) (Snapshot, error) {
+	// create an empty actor instance and empty snapshot
+	empty := getEmpty[T]()
+	snapshot, err := NewSnapshot(empty)
+	if err != nil {
+		return snapshot, err
 	}
-	return events, records, nil
+
+	// fetch the latest snapshot from storage or return empty
+	if uid != uuid.Nil {
+		latest, err := repository.Storage.FetchLatestSnapshot(ctx, repository.ActorName, uid)
+		if err != nil {
+			return snapshot, err
+		}
+		if latest.IsValid() {
+			snapshot = latest
+		} else {
+			snapshot.ActorId = uid
+		}
+	} else {
+		snapshot.ActorId, err = GetId()
+		if err != nil {
+			return snapshot, err
+		}
+	}
+	return snapshot, nil
 }
 
 func (repository Repository[T]) updateActor(events []spry.Event, records []EventRecord, snapshot *Snapshot) {

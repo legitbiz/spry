@@ -9,15 +9,25 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-type IdLinks map[string]map[uuid.UUID]spry.AggregatedIds
+type IdLinks map[string]map[uuid.UUID]storage.AggregatedIds
 
 type InMemoryCommandStore struct {
 	Commands map[uuid.UUID][]storage.CommandRecord
 }
 
+func GetEventsAfter(events []storage.EventRecord, last uuid.UUID) []storage.EventRecord {
+	after := []storage.EventRecord{}
+	for _, e := range events {
+		if e.Id.String() > last.String() {
+			after = append(after, e)
+		}
+	}
+	return after
+}
+
 func (store *InMemoryCommandStore) Add(
 	ctx context.Context,
-	actorType string,
+	actorName string,
 	command storage.CommandRecord) error {
 	if store.Commands == nil {
 		store.Commands = map[uuid.UUID][]storage.CommandRecord{}
@@ -52,25 +62,30 @@ func (store *InMemoryEventStore) Add(ctx context.Context, events []storage.Event
 
 func (store *InMemoryEventStore) FetchAggregatedSince(
 	ctx context.Context,
-	ids spry.AggregateIdMap,
+	actorName string,
+	actorId uuid.UUID,
 	eventUUID uuid.UUID,
+	idMap storage.LastEventMap,
 	types storage.TypeMap) ([]storage.EventRecord, error) {
 
 	if store.Events == nil {
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
 
-	ok := false
 	var records []storage.EventRecord
-	if records, ok = store.Events[ids.ActorId]; !ok {
-		records = []storage.EventRecord{}
+	own, err := store.FetchSince(ctx, actorName, actorId, eventUUID, types)
+	if err != nil {
+		return nil, err
 	}
+	records = append(records, own...)
 
-	for _, l := range ids.Aggregated {
-		for _, i := range l {
-			if e, ok := store.Events[i]; ok {
-				records = append(records, e...)
+	for childName, childMap := range idMap.LastEvents {
+		for id, last := range childMap {
+			list, err := store.FetchSince(ctx, childName, id, last, types)
+			if err != nil {
+				return nil, err
 			}
+			records = append(records, list...)
 		}
 	}
 
@@ -83,7 +98,7 @@ func (store *InMemoryEventStore) FetchAggregatedSince(
 
 func (store *InMemoryEventStore) FetchSince(
 	ctx context.Context,
-	actorType string,
+	actorName string,
 	actorId uuid.UUID,
 	eventUUID uuid.UUID,
 	types storage.TypeMap) ([]storage.EventRecord, error) {
@@ -91,7 +106,7 @@ func (store *InMemoryEventStore) FetchSince(
 		store.Events = map[uuid.UUID][]storage.EventRecord{}
 	}
 	if stored, ok := store.Events[actorId]; ok {
-		return stored, nil
+		return GetEventsAfter(stored, eventUUID), nil
 	} else {
 		return []storage.EventRecord{}, nil
 	}
@@ -102,7 +117,7 @@ type InMemoryMapStore struct {
 	LinkMap IdLinks
 }
 
-func (maps *InMemoryMapStore) AddId(ctx context.Context, actorType string, ids spry.Identifiers, uid uuid.UUID) error {
+func (maps *InMemoryMapStore) AddId(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
@@ -116,10 +131,10 @@ func (maps *InMemoryMapStore) AddLink(ctx context.Context, parentType string, pa
 		maps.LinkMap = IdLinks{}
 	}
 	if maps.LinkMap[parentType] == nil {
-		maps.LinkMap[parentType] = map[uuid.UUID]spry.AggregatedIds{}
+		maps.LinkMap[parentType] = map[uuid.UUID]storage.AggregatedIds{}
 	}
 	if maps.LinkMap[parentType][parentId] == nil {
-		maps.LinkMap[parentType][parentId] = spry.AggregatedIds{}
+		maps.LinkMap[parentType][parentId] = storage.AggregatedIds{}
 	}
 	if maps.LinkMap[parentType][parentId][childType] == nil {
 		maps.LinkMap[parentType][parentId][childType] = []uuid.UUID{childId}
@@ -129,7 +144,7 @@ func (maps *InMemoryMapStore) AddLink(ctx context.Context, parentType string, pa
 	return nil
 }
 
-func (maps *InMemoryMapStore) GetId(ctx context.Context, actorType string, ids spry.Identifiers) (uuid.UUID, error) {
+func (maps *InMemoryMapStore) GetId(ctx context.Context, actorName string, ids spry.Identifiers) (uuid.UUID, error) {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
@@ -141,19 +156,22 @@ func (maps *InMemoryMapStore) GetId(ctx context.Context, actorType string, ids s
 	return uid, nil
 }
 
-func (maps *InMemoryMapStore) GetIdMap(ctx context.Context, actorType string, uid uuid.UUID) (spry.AggregateIdMap, error) {
+func (maps *InMemoryMapStore) GetIdMap(
+	ctx context.Context,
+	actorName string,
+	uid uuid.UUID) (storage.AggregateIdMap, error) {
 	if maps.IdMap == nil {
 		maps.IdMap = map[string]uuid.UUID{}
 	}
 
 	ok := false
-	var aggregates map[uuid.UUID]spry.AggregatedIds
-	if aggregates, ok = maps.LinkMap[actorType]; !ok {
-		aggregates = map[uuid.UUID]spry.AggregatedIds{}
-		maps.LinkMap[actorType] = aggregates
+	var aggregates map[uuid.UUID]storage.AggregatedIds
+	if aggregates, ok = maps.LinkMap[actorName]; !ok {
+		aggregates = map[uuid.UUID]storage.AggregatedIds{}
+		maps.LinkMap[actorName] = aggregates
 	}
 
-	idMap := spry.CreateAggregateIdMap(actorType, uid)
+	idMap := storage.CreateAggregateIdMap(actorName, uid)
 	if actors, ok := aggregates[uid]; ok {
 		for k, v := range actors {
 			idMap.AddIdsFor(k, v...)
@@ -167,7 +185,7 @@ type InMemorySnapshotStore struct {
 	Snapshots map[uuid.UUID][]storage.Snapshot
 }
 
-func (store *InMemorySnapshotStore) Add(ctx context.Context, actorType string, snapshot storage.Snapshot, allowPartition bool) error {
+func (store *InMemorySnapshotStore) Add(ctx context.Context, actorName string, snapshot storage.Snapshot, allowPartition bool) error {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -180,7 +198,7 @@ func (store *InMemorySnapshotStore) Add(ctx context.Context, actorType string, s
 	return nil
 }
 
-func (store *InMemorySnapshotStore) Fetch(ctx context.Context, actorType string, actorId uuid.UUID) (storage.Snapshot, error) {
+func (store *InMemorySnapshotStore) Fetch(ctx context.Context, actorName string, actorId uuid.UUID) (storage.Snapshot, error) {
 	if store.Snapshots == nil {
 		store.Snapshots = map[uuid.UUID][]storage.Snapshot{}
 	}
@@ -209,7 +227,10 @@ func InMemoryStorage() storage.Storage {
 	return storage.NewStorage[storage.NoOpTx](
 		&InMemoryCommandStore{},
 		&InMemoryEventStore{},
-		&InMemoryMapStore{},
+		&InMemoryMapStore{
+			IdMap:   map[string]uuid.UUID{},
+			LinkMap: IdLinks{},
+		},
 		&InMemorySnapshotStore{},
 		&InMemoryTxProvider{},
 	)

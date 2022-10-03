@@ -60,7 +60,7 @@ func TestEventStorage(t *testing.T) {
 	e1 := tests.PlayerCreated{Name: "Bill"}
 	er1, _ := storage.NewEventRecord(e1)
 	er1.ActorId = aid1
-	er1.ActorType = "Player"
+	er1.ActorName = "Player"
 	er1.CreatedBy = "Player"
 	er1.CreatedById = aid1
 	er1.Id, _ = storage.GetId()
@@ -70,7 +70,7 @@ func TestEventStorage(t *testing.T) {
 	e2 := tests.PlayerDamaged{Damage: 10}
 	er2, _ := storage.NewEventRecord(e2)
 	er2.ActorId = aid1
-	er2.ActorType = "Player"
+	er2.ActorName = "Player"
 	er2.CreatedBy = "Player"
 	er2.CreatedById = aid1
 	er2.Id, _ = storage.GetId()

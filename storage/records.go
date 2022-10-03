@@ -16,9 +16,10 @@ func GetId() (uuid.UUID, error) {
 	return UUID, nil
 }
 
-type LastEventMap map[string]map[uuid.UUID]uuid.UUID
-
 type Snapshot struct {
+	// aggregates track records and last events from each
+	// for each child type, track the last event per Identifier
+	LastEventMap
 	// a generated uuid (system id) for the snapshot instance
 	Id uuid.UUID `json:"id"`
 	// this is the addressable identity of the owning model
@@ -47,9 +48,6 @@ type Snapshot struct {
 	LastEventOn time.Time `json:"lastEventOn"`
 	// the contents of the snapshot
 	Data any `json:"data"`
-	// aggregates track records and last events from each
-	// for each child type, track the last event per Identifier
-	LastEvents LastEventMap
 }
 
 func (snapshot Snapshot) IsValid() bool {
@@ -65,11 +63,13 @@ func NewSnapshot(actor any) (Snapshot, error) {
 	}
 
 	return Snapshot{
-		Id:         id,
-		Type:       actorName,
-		CreatedOn:  time.Now().UTC(),
-		Data:       actor,
-		LastEvents: LastEventMap{},
+		Id:        id,
+		Type:      actorName,
+		CreatedOn: time.Now().UTC(),
+		Data:      actor,
+		LastEventMap: LastEventMap{
+			LastEvents: map[string]map[uuid.UUID]uuid.UUID{},
+		},
 	}, nil
 }
 
@@ -83,7 +83,7 @@ type EventRecord struct {
 	// this is the addressable identity of the owning model
 	ActorId uuid.UUID `json:"actorId"`
 	// the type of the model the event was generated for
-	ActorType string `json:"actor"`
+	ActorName string `json:"actor"`
 	// UTC ISO date time string when event was created
 	CreatedOn time.Time `json:"createdOn"`
 	// the type of the actor instantiating the event
@@ -121,7 +121,7 @@ func NewEventRecord(event spry.Event) (EventRecord, error) {
 	}
 	if n, ok := event.(spry.Namespaced); ok {
 		meta := n.GetEventMeta()
-		er.ActorType = meta.CreatedFor
+		er.ActorName = meta.CreatedFor
 		er.CreatedBy = meta.CreatedBy
 	}
 	return er, nil

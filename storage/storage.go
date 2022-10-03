@@ -29,7 +29,7 @@ type CommandStore interface {
 
 type EventStore interface {
 	Add(context.Context, []EventRecord) error
-	FetchAggregatedSince(context.Context, spry.AggregateIdMap, uuid.UUID, TypeMap) ([]EventRecord, error)
+	FetchAggregatedSince(context.Context, string, uuid.UUID, uuid.UUID, LastEventMap, TypeMap) ([]EventRecord, error)
 	FetchSince(context.Context, string, uuid.UUID, uuid.UUID, TypeMap) ([]EventRecord, error)
 }
 
@@ -37,7 +37,7 @@ type MapStore interface {
 	AddId(context.Context, string, spry.Identifiers, uuid.UUID) error
 	AddLink(context.Context, string, uuid.UUID, string, uuid.UUID) error
 	GetId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
-	GetIdMap(context.Context, string, uuid.UUID) (spry.AggregateIdMap, error)
+	GetIdMap(context.Context, string, uuid.UUID) (AggregateIdMap, error)
 }
 
 type SnapshotStore interface {
@@ -58,10 +58,10 @@ type Storage interface {
 	AddSnapshot(context.Context, string, Snapshot, bool) error
 	AddLink(context.Context, string, uuid.UUID, string, uuid.UUID) error
 	Commit(context.Context) error
-	FetchAggregatedEventsSince(context.Context, spry.AggregateIdMap, uuid.UUID) ([]EventRecord, error)
+	FetchAggregatedEventsSince(context.Context, string, uuid.UUID, uuid.UUID, LastEventMap) ([]EventRecord, error)
 	FetchEventsSince(context.Context, string, uuid.UUID, uuid.UUID) ([]EventRecord, error)
 	FetchId(context.Context, string, spry.Identifiers) (uuid.UUID, error)
-	FetchIdMap(context.Context, string, uuid.UUID) (spry.AggregateIdMap, error)
+	FetchIdMap(context.Context, string, uuid.UUID) (AggregateIdMap, error)
 	FetchLatestSnapshot(context.Context, string, uuid.UUID) (Snapshot, error)
 	GetContext(context.Context) (context.Context, error)
 	RegisterPrimitives(...any)
@@ -106,8 +106,8 @@ func (storage Stores[Tx]) Commit(ctx context.Context) error {
 	return storage.Transactions.Commit(ctx)
 }
 
-func (storage Stores[Tx]) FetchAggregatedEventsSince(ctx context.Context, idMap spry.AggregateIdMap, eventId uuid.UUID) ([]EventRecord, error) {
-	return storage.Events.FetchAggregatedSince(ctx, idMap, eventId, storage.Primitives)
+func (storage Stores[Tx]) FetchAggregatedEventsSince(ctx context.Context, actorName string, actorId uuid.UUID, eventId uuid.UUID, idMap LastEventMap) ([]EventRecord, error) {
+	return storage.Events.FetchAggregatedSince(ctx, actorName, actorId, eventId, idMap, storage.Primitives)
 }
 
 func (storage Stores[Tx]) FetchEventsSince(ctx context.Context, actorName string, actorId uuid.UUID, eventId uuid.UUID) ([]EventRecord, error) {
@@ -118,7 +118,7 @@ func (storage Stores[Tx]) FetchId(ctx context.Context, actorName string, identif
 	return storage.Maps.GetId(ctx, actorName, identifiers)
 }
 
-func (storage Stores[Tx]) FetchIdMap(ctx context.Context, actorName string, actorId uuid.UUID) (spry.AggregateIdMap, error) {
+func (storage Stores[Tx]) FetchIdMap(ctx context.Context, actorName string, actorId uuid.UUID) (AggregateIdMap, error) {
 	return storage.Maps.GetIdMap(ctx, actorName, actorId)
 }
 

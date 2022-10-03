@@ -17,7 +17,7 @@ func TestEventRecordSerialization(t *testing.T) {
 		Id:               uid,
 		Type:             "ThingHappened",
 		ActorId:          uid,
-		ActorType:        "Test",
+		ActorName:        "Test",
 		CreatedOn:        time.Now(),
 		CreatedByVersion: 0,
 		CreatedBy:        "Test",
@@ -34,7 +34,7 @@ func TestEventRecordSerialization(t *testing.T) {
 	if record.Id != uid ||
 		record.Type != "ThingHappened" ||
 		record.ActorId != uid ||
-		record.ActorType != "Test" ||
+		record.ActorName != "Test" ||
 		record.CreatedByVersion != 0 ||
 		record.CreatedBy != "Test" ||
 		record.CreatedById != uid {

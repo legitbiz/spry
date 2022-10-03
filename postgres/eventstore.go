@@ -25,7 +25,7 @@ func (store *PostgresEventStore) Add(ctx context.Context, events []storage.Event
 		}
 		query, _ := store.Templates.Execute(
 			"insert_event.sql",
-			queryData(event.ActorType),
+			queryData(event.ActorName),
 		)
 		batch.Queue(
 			query,
@@ -43,13 +43,15 @@ func (store *PostgresEventStore) Add(ctx context.Context, events []storage.Event
 	return err
 }
 
-func (store *InMemoryEventStore) FetchAggregatedSince(
+func (store *PostgresEventStore) FetchAggregatedSince(
 	ctx context.Context,
-	ids spry.AggregateIdMap,
+	actorName string,
+	actorId uuid.UUID,
 	eventUUID uuid.UUID,
+	idMap storage.LastEventMap,
 	types storage.TypeMap) ([]storage.EventRecord, error) {
 
-	return []storage.EventRecord, nil
+	return []storage.EventRecord{}, nil
 }
 
 func (store *PostgresEventStore) FetchSince(
