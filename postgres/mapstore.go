@@ -16,7 +16,7 @@ type PostgresMapStore struct {
 	Templates storage.StringTemplate
 }
 
-func (store *PostgresMapStore) Add(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
+func (store *PostgresMapStore) AddId(ctx context.Context, actorName string, ids spry.Identifiers, uid uuid.UUID) error {
 	query, _ := store.Templates.Execute(
 		"insert_map.sql",
 		queryData(actorName),
@@ -37,6 +37,31 @@ func (store *PostgresMapStore) Add(ctx context.Context, actorName string, ids sp
 				data,
 				uid,
 				time.Now(),
+			)
+			return err
+		},
+	)
+	return err
+}
+
+func (store *PostgresMapStore) AddLink(ctx context.Context, parentType string, parentId uuid.UUID, childType string, childId uuid.UUID) error {
+	query, _ := store.Templates.Execute(
+		"insert_link.sql",
+		queryData(parentType),
+	)
+	tx := storage.GetTx[pgx.Tx](ctx)
+	id, _ := storage.GetId()
+	err := tx.BeginFunc(
+		ctx,
+		func(t pgx.Tx) error {
+			_, err := t.Exec(
+				ctx,
+				query,
+				id,
+				parentType,
+				parentId,
+				childType,
+				childId,
 			)
 			return err
 		},
@@ -72,4 +97,38 @@ func (store *PostgresMapStore) GetId(ctx context.Context, actorName string, ids 
 		}
 	}
 	return uid, nil
+}
+
+func (store *PostgresMapStore) GetIdMap(ctx context.Context, actorName string, uid uuid.UUID) (storage.AggregateIdMap, error) {
+	query, _ := store.Templates.Execute(
+		"select_links_for_actor.sql",
+		queryData(actorName),
+	)
+
+	empty := storage.EmptyAggregateIdMap()
+	tx := storage.GetTx[pgx.Tx](ctx)
+	rows, err := tx.Query(
+		ctx,
+		query,
+		actorName,
+		uid,
+	)
+	if err != nil {
+		return empty, err
+	}
+	defer rows.Close()
+
+	idMap := storage.CreateAggregateIdMap(actorName, uid)
+
+	for rows.Next() {
+		var child string
+		var id uuid.UUID
+		err = rows.Scan(nil, nil, &child, &id)
+		if err != nil {
+			return empty, err
+		}
+		idMap.AddIdsFor(child, id)
+	}
+
+	return idMap, nil
 }

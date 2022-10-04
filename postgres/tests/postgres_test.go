@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/arobson/spry"
 	"github.com/arobson/spry/postgres"
 	"github.com/arobson/spry/storage"
 	"github.com/arobson/spry/tests"
@@ -17,13 +18,15 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 	)
 
 	t.Cleanup(func() {
-		_ = TruncateTable("player_commands")
-		_ = TruncateTable("player_events")
-		_ = TruncateTable("player_id_map")
-		_ = TruncateTable("player_snapshots")
+		_ = TruncateTables(
+			"player_commands",
+			"player_events",
+			"player_id_map",
+			"player_snapshots",
+		)
 	})
 
-	repo := storage.GetRepositoryFor[tests.Player](store)
+	repo := storage.GetActorRepositoryFor[tests.Player](store)
 	results := repo.Handle(tests.CreatePlayer{Name: "Bob"})
 
 	// create player
@@ -71,5 +74,69 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 	}
 	if results3.Modified.Name != "Bob" {
 		t.Error("incorrect creation of new actor occurred")
+	}
+}
+
+func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
+	store := postgres.CreatePostgresStorage(CONNECTION_STRING)
+	store.RegisterPrimitives(
+		tests.VehicleRegistered{},
+	)
+	motorists := storage.GetAggregateRepositoryFor[tests.Motorist](store)
+	vehicles := storage.GetActorRepositoryFor[tests.Vehicle](store)
+
+	t.Cleanup(func() {
+		_ = TruncateTables(
+			"vehicle_commands",
+			"vehicle_events",
+			"vehicle_id_map",
+			"vehicle_links",
+			"vehicle_snapshots",
+			"motorist_commands",
+			"motorist_events",
+			"motorist_id_map",
+			"motorist_links",
+			"motorist_snapshots",
+		)
+	})
+
+	m1id := tests.MotoristId{
+		License: "008767890",
+		State:   "CA",
+	}
+
+	v1id := tests.VehicleId{
+		VIN: "001002003",
+	}
+
+	rv1 := tests.RegisterVehicle{
+		MotoristId: m1id,
+		VehicleId:  v1id,
+		Type:       "Moped",
+		Make:       "Hyundai",
+		Model:      "Scootchum",
+		Color:      "Blurple",
+	}
+	r1 := motorists.Handle(rv1)
+	if len(r1.Modified.Vehicles) < 1 {
+		t.Error("expected motorist to have 1 vehicle after registration")
+	}
+
+	v1, _ := vehicles.Fetch(spry.Identifiers{"VIN": v1id.VIN})
+	if v1.VIN != v1id.VIN {
+		t.Error("failed to retain VIN")
+	}
+
+	m1, _ := motorists.Fetch(spry.Identifiers{"License": "008767890", "State": "CA"})
+	mv1 := m1.Vehicles[0]
+	if m1.License != m1id.License ||
+		m1.State != m1id.State ||
+		len(m1.Vehicles) != 1 ||
+		mv1.Color != rv1.Color ||
+		mv1.Make != rv1.Make ||
+		mv1.Model != rv1.Model ||
+		mv1.Type != rv1.Type ||
+		mv1.VIN != rv1.VIN {
+		t.Error("failed to rehydrate motorist correctly")
 	}
 }

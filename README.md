@@ -8,6 +8,8 @@ An event sourcing library in Go.
 
 ## Use
 
+The following example demonstrates the simplest use of spry - implementing application behavior as models (actors), commands, and events.
+
 ```golang
 package main
 
@@ -174,27 +176,27 @@ func main() {
 ## Why?
 
 An initial glance may make this seem like more effort than a more common CRUD/ORM based approach where
-models are persisted and read directly to / from schema and generated (or handwritten) queries. While
-this approach is more familiar, it has a number of shortcomings that we tend not to consider until
+models are persisted and read directly to / from specialized schema and generated (or handwritten) queries. While
+this approach is common and familiar, it has a number of shortcomings that we tend not to consider until
 we're faced with the limitations.
 
-  1. All data requires a custom-purpose schema
-  1. All persistence and access require tailored queries defined as SQL or ORM API
+  1. All data requires a purpose-written schema
+  1. All persistence and access require tailored queries defined as SQL or ORM DSL
   1. All writes destroy data from the system - you can't read old information
   1. Errors in application code or queries result in permanent data loss
   1. Performance tuning is always specific to targeted schema or queries
-  1. Performance behavior is unpredictable
-  1. Integrations take longer and have to be adapted for all schema/model changes
+  1. Performance behavior is unpredictable as data sets or read/write volume grows
+  1. Integrations take longer and require constant maintenance
 
 In contrast, an event-sourced approach like this one has the following advantages:
 
-  1. No schema to write or manage: schema is the same for each Actor type
+  1. No schema to write or manage: the schema is uniform across all models 
   1. No queries to write or adapt: storage adapters can pre-implement all queries ahead of time
   1. No data loss during writes: events provide a complete log of all historical state
   1. Fix and replay: changes in event application can correct defects in how state was determined
   1. Improvements are global: improvements to a storage adapter impact _all_ Actor's data access
   1. Performance behavior is more predictable with uniform access patterns
-  1. Simple integrations: build integrations around streams of events from your system
+  1. Simple integrations: build integrations around event streams produced by your application
 
 ## Concepts
 
@@ -210,7 +212,9 @@ availability.
 
 ### Emphasis on Simplicity
 
-While spry certainly has a few complex routines that are part of its 
+spry is our best attempt to push complexity and storage concerns downward into an implementation
+with a simple API and simple conventions. Convention is used over configuration in every case where
+we've been able to manage it.
 
 ### Actors
 
@@ -244,24 +248,53 @@ Snapshots are a point-in-time capture of an Actor's state. Creating these at reg
 intervals prevents spry from having to read _every_ event that has occurred for a particular actor 
 over its entire history.
 
+### Projections
+
+A projection is state derived through defined operations over an even stream. An Actor is a subset of projection in spry. Each Actor type in spry produces and derives its state from a specific event stream. There are two other types of projections in spry:
+
+#### Aggregate Projection
+
+An Aggregate Projection provides a mechanism for defining an Actor model that includes event streams from other Actor types that have some application-defined relationship between them. This mechanism allows the application more flexibility in how complex sets of behaviors interact in an event sourced system. The most likely use your application will have for Aggregates is when you need to enforce rules or behaviors over distinct sets of Actors.
+
+> Note: it's important to point out that this is advanced modeling and will introduce some complexity into how you design and implement your application behavior. 
+
+#### Query Projection
+
+A Query Projection is similar to an Aggregate projection except it does not require predefined relationships between Actors in order to consume events from multiple streams. Queries do not have their own event stream since they are a read-only model over other Actors' event streams.
+
 ## Storage
 
 ### Philosophy
 
 When writing a storage adapter for spry, it's important to remember a few guiding principles:
 
+ * Every app/service is expected to have its own database
  * Every Actor should receive its own set of tables/buckets/storage
- * All write operations should append only (`INSERT` never `UPDATE`)
+ * All write operations should be append only (`INSERT` vs `UPDATE`)
  * The UUIDs produced by Spry should never be exposed to the application
- * Spry expects that the Identifiers map will map to a consistent UUID
+ * spry depends on a unique set of Identifiers mapping to one UUID consistently
+ * Aggregates require some mechanism for linking different records to the aggregate
+ * Queries require a mechanism that can index 
 
 ### CommandStore
 
+The CommandStore exists primarily to provide a causal log of all actions carried out
+against the application. Event records point back to the originating command that produced them.
+
 ### EventStore
+
+The EventStore is responsible for persistence and loading of the event stream (event log)
+for Actors.
 
 ### MapStore
 
+The MapStore is responsible for:
+	1. Associating a unique set of Identifiers with a UUID
+	1. Linking different Actors together to create an Aggregate 
+
 ### SnapshotStore
 
+The SnapshotStore stores and accesses snapshots to prevent spry from having to rehydrate
+Actor/Aggregate/Query state from scratch each time.
 
 [1]: https://datatracker.ietf.org/doc/html/draft-peabody-dispatch-new-uuid-format-03#section-5.1

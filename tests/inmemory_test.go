@@ -3,21 +3,23 @@ package tests
 import (
 	"testing"
 
+	"github.com/arobson/spry"
+
 	"github.com/arobson/spry/memory"
 	"github.com/arobson/spry/storage"
 )
 
 func TestGetRepositoryFor(t *testing.T) {
 	store := memory.InMemoryStorage()
-	repo := storage.GetRepositoryFor[Player](store)
+	repo := storage.GetActorRepositoryFor[Player](store)
 	if repo.ActorName != "Player" {
 		t.Error("actor name was not the expected type")
 	}
 }
 
-func TestHandleCommandSuccessfully(t *testing.T) {
+func TestActorHandlesCommandSuccessfully(t *testing.T) {
 	store := memory.InMemoryStorage()
-	repo := storage.GetRepositoryFor[Player](store)
+	repo := storage.GetActorRepositoryFor[Player](store)
 	results := repo.Handle(CreatePlayer{Name: "Bob"})
 
 	// create player
@@ -65,5 +67,51 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 	}
 	if results3.Modified.Name != "Bob" {
 		t.Error("incorrect creation of new actor occurred")
+	}
+}
+
+func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
+	store := memory.InMemoryStorage()
+	motorists := storage.GetAggregateRepositoryFor[Motorist](store)
+	vehicles := storage.GetActorRepositoryFor[Vehicle](store)
+
+	m1id := MotoristId{
+		License: "008767890",
+		State:   "CA",
+	}
+
+	v1id := VehicleId{
+		VIN: "001002003",
+	}
+
+	rv1 := RegisterVehicle{
+		MotoristId: m1id,
+		VehicleId:  v1id,
+		Type:       "Moped",
+		Make:       "Hyundai",
+		Model:      "Scootchum",
+		Color:      "Blurple",
+	}
+	r1 := motorists.Handle(rv1)
+	if len(r1.Modified.Vehicles) < 1 {
+		t.Error("expected motorist to have 1 vehicle after registration")
+	}
+
+	v1, _ := vehicles.Fetch(spry.Identifiers{"VIN": v1id.VIN})
+	if v1.VIN != v1id.VIN {
+		t.Error("failed to retain VIN")
+	}
+
+	m1, _ := motorists.Fetch(spry.Identifiers{"License": "008767890", "State": "CA"})
+	mv1 := m1.Vehicles[0]
+	if m1.License != m1id.License ||
+		m1.State != m1id.State ||
+		len(m1.Vehicles) != 1 ||
+		mv1.Color != rv1.Color ||
+		mv1.Make != rv1.Make ||
+		mv1.Model != rv1.Model ||
+		mv1.Type != rv1.Type ||
+		mv1.VIN != rv1.VIN {
+		t.Error("failed to rehydrate motorist correctly")
 	}
 }

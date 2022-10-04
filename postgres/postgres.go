@@ -33,11 +33,13 @@ func CreatePostgresStorage(connectionURI string) storage.Storage {
 		sqlFiles,
 		"sql/insert_command.sql",
 		"sql/insert_event.sql",
+		"sql/insert_link.sql",
 		"sql/insert_map.sql",
 		"sql/insert_snapshot.sql",
 		"sql/select_events_since.sql",
-		"sql/select_latest_snapshot.sql",
 		"sql/select_id_by_map.sql",
+		"sql/select_latest_snapshot.sql",
+		"sql/select_links_for_actor.sql",
 	)
 
 	if err != nil {

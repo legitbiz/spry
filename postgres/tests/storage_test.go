@@ -35,7 +35,7 @@ func TestCommandStorage(t *testing.T) {
 
 	err := store.AddCommand(ctx, "Player", cr1)
 	if err != nil {
-		t.Fatal("failed to store command correctly")
+		t.Fatal("failed to store command correctly", err)
 	}
 
 	tx := storage.GetTx[pgx.Tx](ctx)
@@ -45,7 +45,7 @@ func TestCommandStorage(t *testing.T) {
 	}
 }
 
-func TestEventStorage(t *testing.T) {
+func TestActorEventStorage(t *testing.T) {
 	store := postgres.CreatePostgresStorage(
 		CONNECTION_STRING,
 	)
@@ -60,7 +60,7 @@ func TestEventStorage(t *testing.T) {
 	e1 := tests.PlayerCreated{Name: "Bill"}
 	er1, _ := storage.NewEventRecord(e1)
 	er1.ActorId = aid1
-	er1.ActorType = "Player"
+	er1.ActorName = "Player"
 	er1.CreatedBy = "Player"
 	er1.CreatedById = aid1
 	er1.Id, _ = storage.GetId()
@@ -70,7 +70,7 @@ func TestEventStorage(t *testing.T) {
 	e2 := tests.PlayerDamaged{Damage: 10}
 	er2, _ := storage.NewEventRecord(e2)
 	er2.ActorId = aid1
-	er2.ActorType = "Player"
+	er2.ActorName = "Player"
 	er2.CreatedBy = "Player"
 	er2.CreatedById = aid1
 	er2.Id, _ = storage.GetId()
@@ -79,7 +79,7 @@ func TestEventStorage(t *testing.T) {
 
 	ctx, _ := store.GetContext(context.Background())
 
-	err := store.AddEvents(ctx, "Player", []storage.EventRecord{
+	err := store.AddEvents(ctx, []storage.EventRecord{
 		er1,
 		er2,
 	})
@@ -94,6 +94,63 @@ func TestEventStorage(t *testing.T) {
 	}
 	if len(records) != 2 {
 		t.Fatalf("expected %d records but got %d instead", 2, len(records))
+	}
+
+	tx := storage.GetTx[pgx.Tx](ctx)
+	err = tx.Rollback(ctx)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestAggregateEventStorage(t *testing.T) {
+	store := postgres.CreatePostgresStorage(
+		CONNECTION_STRING,
+	)
+	store.RegisterPrimitives(
+		tests.VehicleRegistered{},
+	)
+
+	aid1, _ := storage.GetId()
+	agid, _ := storage.GetId()
+
+	e1 := tests.VehicleRegistered{
+		MotoristId: tests.MotoristId{License: "123", State: "AK"},
+		VehicleId:  tests.VehicleId{VIN: "000000001"},
+		Type:       "scooter",
+		Make:       "gogeddums",
+		Model:      "scootchies",
+		Color:      "arglebargle",
+	}
+
+	er1, _ := storage.NewEventRecord(e1)
+	er1.ActorId = aid1
+	er1.ActorName = "Vehicle"
+	er1.CreatedBy = "Motorist"
+	er1.CreatedById = agid
+	er1.Id, _ = storage.GetId()
+	er1.Data = e1
+	er1.Type = "VehicleRegistered"
+
+	ctx, _ := store.GetContext(context.Background())
+
+	err := store.AddEvents(ctx, []storage.EventRecord{er1})
+	if err != nil {
+		t.Error(err)
+	}
+
+	records, err := store.FetchEventsSince(ctx, "vehicle", aid1, uuid.Nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 {
+		t.Fatalf("expected %d records but got %d instead", 1, len(records))
+	}
+	r1 := records[0].Data.(tests.VehicleRegistered)
+	if r1.License != e1.License ||
+		r1.State != e1.State ||
+		r1.VIN != e1.VIN {
+		t.Fatal("embedded properties did not correctly deserialize")
 	}
 
 	tx := storage.GetTx[pgx.Tx](ctx)
