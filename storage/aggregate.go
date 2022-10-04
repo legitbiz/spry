@@ -160,6 +160,14 @@ func (repository AggregateRepository[T]) handleAggregateCommand(ctx context.Cont
 
 	actor := baseline.Data.(T)
 	events, errors := command.Handle(actor)
+
+	if len(errors) > 0 {
+		return spry.Results[T]{
+			Original: actor,
+			Errors:   errors,
+		}
+	}
+
 	next := repository.Apply(events, actor)
 	eventRecords, s, done := repository.createEventRecords(events, baseline, cmdRecord, assignments)
 	if done {

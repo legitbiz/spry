@@ -40,3 +40,4 @@ compose:
 decomp:
 	cd ./.docker && \
 		docker-compose down
+	sudo rm -rf ./.docker/volumes/postgres/data

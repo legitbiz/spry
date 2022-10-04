@@ -18,3 +18,17 @@ func Reducer[T any, A any](
 	}
 	return a
 }
+
+func Contains[T any, I comparable](
+	t []T,
+	q T,
+	identity func(item T) I) bool {
+	target := identity(q)
+	for _, x := range t {
+		check := identity(x)
+		if check == target {
+			return true
+		}
+	}
+	return false
+}

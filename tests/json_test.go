@@ -60,7 +60,7 @@ func TestEmbeddedSerialization(t *testing.T) {
 	tmp, err := spry.FromJson[any](json)
 
 	var vr2 VehicleRegistered
-	mapstructure.Decode(tmp, &vr2)
+	_ = mapstructure.Decode(tmp, &vr2)
 
 	if err != nil {
 		t.Error(err)

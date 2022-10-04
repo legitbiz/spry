@@ -9,19 +9,22 @@ import (
 
 var CONNECTION_STRING = "postgres://spry:yippyskippy@localhost:5540/sprydb"
 
-func TruncateTable(tableName string) error {
+func TruncateTables(tableNames ...string) error {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, CONNECTION_STRING)
 	if err != nil {
+		fmt.Print("uh oh", err)
 		return err
 	}
 	defer conn.Close(ctx)
-	_, err = conn.Exec(
-		ctx,
-		fmt.Sprintf("TRUNCATE TABLE %s;", tableName),
-	)
-	if err != nil {
-		return err
+	for _, tableName := range tableNames {
+		_, err = conn.Exec(
+			ctx,
+			fmt.Sprintf("DELETE FROM %s;", tableName),
+		)
+		if err != nil {
+			fmt.Println("beans :(", err)
+		}
 	}
 	return nil
 }

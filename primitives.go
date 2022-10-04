@@ -2,18 +2,28 @@ package spry
 
 import (
 	"encoding/json"
+
+	"github.com/arobson/spry/core"
 )
 
 type Identifiers = map[string]any
 
 type IdentifierSet = map[string][]Identifiers
 
-type Actor[T any] interface {
+type HasIdentity interface {
 	GetIdentifiers() Identifiers
 }
 
-type Aggregate[T any] interface {
+type HasIdentities interface {
 	GetIdentifierSet() IdentifierSet
+}
+
+type Actor[T any] interface {
+	HasIdentity
+}
+
+type Aggregate[T any] interface {
+	HasIdentities
 }
 
 type IdSet struct {
@@ -124,4 +134,13 @@ func FromJson[T any](bytes []byte) (T, error) {
 	obj := *new(T)
 	err := json.Unmarshal(bytes, &obj)
 	return obj, err
+}
+
+func ContainsChild[T HasIdentity](list []T, child HasIdentity) bool {
+	converted := core.Mapper(list, func(t T) HasIdentity { return HasIdentity(t) })
+	exists := core.Contains(converted, child, func(t HasIdentity) string {
+		s, _ := IdentifiersToString(t.GetIdentifiers())
+		return s
+	})
+	return exists
 }

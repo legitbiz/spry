@@ -1,12 +1,14 @@
 package tests
 
 import (
+	"errors"
+
 	"github.com/arobson/spry"
 	"github.com/arobson/spry/core"
 )
 
 type VehicleId struct {
-	VIN string `json:"VIN"`
+	VIN string
 }
 
 func (v VehicleId) GetIdentifiers() spry.Identifiers {
@@ -21,9 +23,9 @@ type Vehicle struct {
 	Color     string
 }
 
-func (v Vehicle) GetIdentifiers() spry.Identifiers {
-	return spry.Identifiers{"VIN": v.VIN}
-}
+// func (v Vehicle) GetIdentifiers() spry.Identifiers {
+// 	return spry.Identifiers{"VIN": v.VIN}
+// }
 
 type Motorist struct {
 	MotoristId `mapstructure:",squash"`
@@ -113,8 +115,11 @@ func (rv RegisterVehicle) GetIdentifierSet() spry.IdentifierSet {
 }
 
 func (rv RegisterVehicle) Handle(actor any) ([]spry.Event, []error) {
-	switch actor.(type) {
+	switch a := actor.(type) {
 	case Motorist:
+		if spry.ContainsChild(a.Vehicles, rv.VehicleId) {
+			return []spry.Event{}, []error{errors.New("you can't register that vehicle, shartablart")}
+		}
 		return []spry.Event{
 			VehicleRegistered{
 				MotoristId: rv.MotoristId,

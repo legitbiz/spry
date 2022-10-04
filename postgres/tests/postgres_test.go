@@ -18,10 +18,12 @@ func TestHandleCommandSuccessfully(t *testing.T) {
 	)
 
 	t.Cleanup(func() {
-		_ = TruncateTable("player_commands")
-		_ = TruncateTable("player_events")
-		_ = TruncateTable("player_id_map")
-		_ = TruncateTable("player_snapshots")
+		_ = TruncateTables(
+			"player_commands",
+			"player_events",
+			"player_id_map",
+			"player_snapshots",
+		)
 	})
 
 	repo := storage.GetActorRepositoryFor[tests.Player](store)
@@ -82,6 +84,21 @@ func TestAggregateHandlesCommandSuccessfully(t *testing.T) {
 	)
 	motorists := storage.GetAggregateRepositoryFor[tests.Motorist](store)
 	vehicles := storage.GetActorRepositoryFor[tests.Vehicle](store)
+
+	t.Cleanup(func() {
+		_ = TruncateTables(
+			"vehicle_commands",
+			"vehicle_events",
+			"vehicle_id_map",
+			"vehicle_links",
+			"vehicle_snapshots",
+			"motorist_commands",
+			"motorist_events",
+			"motorist_id_map",
+			"motorist_links",
+			"motorist_snapshots",
+		)
+	})
 
 	m1id := tests.MotoristId{
 		License: "008767890",
