@@ -14,11 +14,15 @@ jobs:
         auth:
           username: $DOCKER_USERNAME
           password: $DOCKER_PASSWORD
-      - image: arobson/spry:cidb
-        auth:
-          username: $DOCKER_USERNAME
-          password: $DOCKER_PASSWORD
-
+      - image: cimg/postgres:14.5
+        environment:
+          - POSTGRES_DB=sprydb
+          - POSTGRES_USER=spry
+          - POSTGRES_PASSWORD=yippyskippy
+          - PGDATA=/var/lib/postgresql/data/pgdata
+          - PGPORT=5540
+        volumes:
+          - ./.docker/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
