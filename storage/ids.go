@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/arobson/spry"
 	"github.com/gofrs/uuid"
+	"github.com/legitbiz/spry"
 )
 
 type AggregatedIds = map[string][]uuid.UUID

@@ -5,9 +5,9 @@ import (
 	"embed"
 	"fmt"
 
-	"github.com/arobson/spry/storage"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/legitbiz/spry/storage"
 )
 
 type QueryData struct {

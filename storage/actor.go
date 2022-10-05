@@ -5,7 +5,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/arobson/spry"
+	"github.com/legitbiz/spry"
 )
 
 type ActorRepository[T spry.Actor[T]] struct {

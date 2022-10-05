@@ -3,11 +3,11 @@ package postgres
 import (
 	"context"
 
-	"github.com/arobson/spry"
-	"github.com/arobson/spry/storage"
 	"github.com/gofrs/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/legitbiz/spry"
+	"github.com/legitbiz/spry/storage"
 )
 
 type PostgresSnapshotStore struct {

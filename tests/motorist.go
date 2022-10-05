@@ -3,8 +3,8 @@ package tests
 import (
 	"errors"
 
-	"github.com/arobson/spry"
-	"github.com/arobson/spry/core"
+	"github.com/legitbiz/spry"
+	"github.com/legitbiz/spry/core"
 )
 
 type VehicleId struct {

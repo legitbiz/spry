@@ -3,10 +3,10 @@ package tests
 import (
 	"testing"
 
-	"github.com/arobson/spry"
+	"github.com/legitbiz/spry"
 
-	"github.com/arobson/spry/memory"
-	"github.com/arobson/spry/storage"
+	"github.com/legitbiz/spry/memory"
+	"github.com/legitbiz/spry/storage"
 )
 
 func TestGetRepositoryFor(t *testing.T) {

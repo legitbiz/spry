@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/arobson/spry/storage"
+	"github.com/legitbiz/spry/storage"
 )
 
 func TestEventMapping(t *testing.T) {

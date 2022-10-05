@@ -1,8 +1,10 @@
-module github.com/arobson/spry
+module github.com/legitbiz/spry
 
 go 1.19
 
-require github.com/gofrs/uuid v4.3.0+incompatible
+require (
+	github.com/gofrs/uuid v4.3.0+incompatible
+)
 
 require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

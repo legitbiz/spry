@@ -3,10 +3,10 @@ package tests
 import (
 	"testing"
 
-	"github.com/arobson/spry"
-	"github.com/arobson/spry/postgres"
-	"github.com/arobson/spry/storage"
-	"github.com/arobson/spry/tests"
+	"github.com/legitbiz/spry"
+	"github.com/legitbiz/spry/postgres"
+	"github.com/legitbiz/spry/storage"
+	"github.com/legitbiz/spry/tests"
 )
 
 func TestHandleCommandSuccessfully(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"sort"
 
-	"github.com/arobson/spry"
-	"github.com/arobson/spry/storage"
 	"github.com/gofrs/uuid"
+	"github.com/legitbiz/spry"
+	"github.com/legitbiz/spry/storage"
 )
 
 type IdLinks map[string]map[uuid.UUID]storage.AggregatedIds
