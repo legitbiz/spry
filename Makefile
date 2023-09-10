@@ -1,5 +1,8 @@
 build: godeps golint
 	go build -o ./bin/spry
+	cd ./cli && \
+		go build -o ../bin/spry-cli && \
+		cd ..
 
 godeps:
 	mkdir -p ./.test
